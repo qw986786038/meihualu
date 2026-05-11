@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'dart:convert';
 import 'dart:async';
 
-typedef StackBoardWidgetBuilder = Widget Function(
-  BuildContext context,
-  bool selected,
-  Map<String, dynamic> data,
-  ValueChanged<Map<String, dynamic>> updateData,
-);
+typedef StackBoardWidgetBuilder =
+    Widget Function(
+      BuildContext context,
+      bool selected,
+      Map<String, dynamic> data,
+      ValueChanged<Map<String, dynamic>> updateData,
+    );
 
 enum StackBoardPlacement { topLeft, topRight, bottomLeft, bottomRight, center }
 
@@ -19,6 +21,7 @@ class StackBoardTemplate {
     this.defaultSize = const Size(120, 56),
     this.defaultAllowOverlap = true,
     this.defaultDraggable = true,
+    this.autoSizeToChild = false,
     this.defaultData = const <String, dynamic>{},
     this.dataToJson,
     this.dataFromJson,
@@ -30,6 +33,7 @@ class StackBoardTemplate {
   final StackBoardWidgetBuilder builder;
   final bool defaultAllowOverlap;
   final bool defaultDraggable;
+  final bool autoSizeToChild;
   final Map<String, dynamic> defaultData;
   final Map<String, dynamic> Function(Map<String, dynamic> data)? dataToJson;
   final Map<String, dynamic> Function(Map<String, dynamic> json)? dataFromJson;
@@ -45,7 +49,14 @@ class StackBoardTemplate {
     bool? draggable,
   }) {
     final resolvedSize = size ?? defaultSize;
-    final p = initialPosition ?? _resolvePlacementOffset(boardSize: boardSize, size: resolvedSize, placement: placement ?? StackBoardPlacement.topLeft, margin: placementMargin);
+    final p =
+        initialPosition ??
+        _resolvePlacementOffset(
+          boardSize: boardSize,
+          size: resolvedSize,
+          placement: placement ?? StackBoardPlacement.topLeft,
+          margin: placementMargin,
+        );
     return StackBoardItem(
       id: id,
       template: this,
@@ -56,12 +67,23 @@ class StackBoardTemplate {
     );
   }
 
-  Offset _resolvePlacementOffset({required Size? boardSize, required Size size, required StackBoardPlacement placement, required EdgeInsets margin}) {
+  Offset _resolvePlacementOffset({
+    required Size? boardSize,
+    required Size size,
+    required StackBoardPlacement placement,
+    required EdgeInsets margin,
+  }) {
     if (boardSize == null || boardSize.width <= 0 || boardSize.height <= 0) {
       return Offset(margin.left, margin.top);
     }
-    final maxX = (boardSize.width - size.width - margin.right).clamp(0.0, double.infinity);
-    final maxY = (boardSize.height - size.height - margin.bottom).clamp(0.0, double.infinity);
+    final maxX = (boardSize.width - size.width - margin.right).clamp(
+      0.0,
+      double.infinity,
+    );
+    final maxY = (boardSize.height - size.height - margin.bottom).clamp(
+      0.0,
+      double.infinity,
+    );
     switch (placement) {
       case StackBoardPlacement.topLeft:
         return Offset(margin.left, margin.top);
@@ -80,10 +102,13 @@ class StackBoardTemplate {
 }
 
 class StackBoardController extends ChangeNotifier {
-  StackBoardController({List<StackBoardItem>? initialItems, int seed = 0}) : _items = List<StackBoardItem>.from(initialItems ?? const []), _idSeed = seed;
+  StackBoardController({List<StackBoardItem>? initialItems, int seed = 0})
+    : _items = List<StackBoardItem>.from(initialItems ?? const []),
+      _idSeed = seed;
 
   final List<StackBoardItem> _items;
-  final Map<String, StackBoardTemplate> _registeredTemplates = <String, StackBoardTemplate>{};
+  final Map<String, StackBoardTemplate> _registeredTemplates =
+      <String, StackBoardTemplate>{};
   int _idSeed;
   int? _selectedId;
   Size _boardSize = Size.zero;
@@ -179,7 +204,11 @@ class StackBoardController extends ChangeNotifier {
   void restoreFromJsonString(
     String jsonString, {
     Map<String, StackBoardTemplate> templatesById = const {},
-    StackBoardTemplate? Function(String templateId, Map<String, dynamic> rawItem)? templateResolver,
+    StackBoardTemplate? Function(
+      String templateId,
+      Map<String, dynamic> rawItem,
+    )?
+    templateResolver,
   }) {
     final decoded = jsonDecode(jsonString);
     if (decoded is! Map<String, dynamic>) {
@@ -209,17 +238,22 @@ class StackBoardController extends ChangeNotifier {
       final id = (raw['id'] as num?)?.toInt() ?? (++maxId);
       final x = (raw['x'] as num?)?.toDouble() ?? 0;
       final y = (raw['y'] as num?)?.toDouble() ?? 0;
-      final width = (raw['width'] as num?)?.toDouble() ?? template.defaultSize.width;
-      final height = (raw['height'] as num?)?.toDouble() ?? template.defaultSize.height;
-      final allowOverlap = (raw['allowOverlap'] as bool?) ?? template.defaultAllowOverlap;
-      final draggable = (raw['draggable'] as bool?) ?? template.defaultDraggable;
+      final width =
+          (raw['width'] as num?)?.toDouble() ?? template.defaultSize.width;
+      final height =
+          (raw['height'] as num?)?.toDouble() ?? template.defaultSize.height;
+      final allowOverlap =
+          (raw['allowOverlap'] as bool?) ?? template.defaultAllowOverlap;
+      final draggable =
+          (raw['draggable'] as bool?) ?? template.defaultDraggable;
       final rawData = raw['data'];
       final parsedData = rawData is Map<String, dynamic>
           ? rawData
           : rawData is Map
-              ? Map<String, dynamic>.from(rawData)
-              : template.defaultData;
-      final restoredData = template.dataFromJson?.call(parsedData) ?? parsedData;
+          ? Map<String, dynamic>.from(rawData)
+          : template.defaultData;
+      final restoredData =
+          template.dataFromJson?.call(parsedData) ?? parsedData;
 
       restored.add(
         StackBoardItem(
@@ -254,6 +288,7 @@ class StackBoard extends StatefulWidget {
     this.pointerEventsThrough = false,
     this.pointerEventsThroughEmptyOnly = false,
     this.keepEdgeAnchoredOnResize = false,
+    this.selectedFrameVisibleDuration = const Duration(seconds: 1),
   });
 
   final StackBoardController controller;
@@ -262,9 +297,13 @@ class StackBoard extends StatefulWidget {
   final Duration dragStateExitDelay;
   final bool pointerEventsThrough;
   final bool pointerEventsThroughEmptyOnly;
+
   /// When enabled, items touching right/bottom edge stay attached there
   /// after board size changes.
   final bool keepEdgeAnchoredOnResize;
+
+  /// Selected border auto-hide duration.
+  final Duration selectedFrameVisibleDuration;
 
   @override
   State<StackBoard> createState() => _StackBoardState();
@@ -307,14 +346,42 @@ class StackBoardItem {
 class _StackBoardState extends State<StackBoard> {
   Size _boardSize = Size.zero;
   int? _draggingItemId;
+  int? _selectedFrameItemId;
   Rect? _dragStartRect;
   Timer? _dragEndTimer;
+  Timer? _selectedFrameTimer;
   Size _lastLayoutBoardSize = Size.zero;
 
   @override
   void dispose() {
     _dragEndTimer?.cancel();
+    _selectedFrameTimer?.cancel();
     super.dispose();
+  }
+
+  void _selectItem(int? id) {
+    widget.controller.select(id);
+    if (id == null) {
+      _selectedFrameTimer?.cancel();
+      if (_selectedFrameItemId != null) {
+        setState(() {
+          _selectedFrameItemId = null;
+        });
+      }
+      return;
+    }
+    _selectedFrameTimer?.cancel();
+    setState(() {
+      _selectedFrameItemId = id;
+    });
+    _selectedFrameTimer = Timer(widget.selectedFrameVisibleDuration, () {
+      if (!mounted) return;
+      if (_selectedFrameItemId == id) {
+        setState(() {
+          _selectedFrameItemId = null;
+        });
+      }
+    });
   }
 
   Rect _clampRect(Rect rect) {
@@ -339,8 +406,10 @@ class _StackBoardState extends State<StackBoard> {
       if (widget.keepEdgeAnchoredOnResize &&
           oldSize.width > 0 &&
           oldSize.height > 0) {
-        final wasAtRight = (oldSize.width - item.rect.right).abs() <= edgeEpsilon;
-        final wasAtBottom = (oldSize.height - item.rect.bottom).abs() <= edgeEpsilon;
+        final wasAtRight =
+            (oldSize.width - item.rect.right).abs() <= edgeEpsilon;
+        final wasAtBottom =
+            (oldSize.height - item.rect.bottom).abs() <= edgeEpsilon;
         if (wasAtRight) {
           nextRect = nextRect.shift(
             Offset((newSize.width - nextRect.width) - nextRect.left, 0),
@@ -363,7 +432,11 @@ class _StackBoardState extends State<StackBoard> {
     });
   }
 
-  bool _isOverlappingAny(Rect rect, StackBoardItem moving, List<StackBoardItem> items) {
+  bool _isOverlappingAny(
+    Rect rect,
+    StackBoardItem moving,
+    List<StackBoardItem> items,
+  ) {
     for (final other in items) {
       if (other.id == moving.id) continue;
       if (moving.allowOverlap && other.allowOverlap) continue;
@@ -372,7 +445,11 @@ class _StackBoardState extends State<StackBoard> {
     return false;
   }
 
-  Rect _resolveRectForItem(StackBoardItem item, Rect candidate, List<StackBoardItem> items) {
+  Rect _resolveRectForItem(
+    StackBoardItem item,
+    Rect candidate,
+    List<StackBoardItem> items,
+  ) {
     final clamped = _clampRect(candidate);
     if (_isOverlappingAny(clamped, item, items)) return item.rect;
     return clamped;
@@ -386,7 +463,7 @@ class _StackBoardState extends State<StackBoard> {
     final nextRect = _resolveRectForItem(item, item.rect.shift(delta), items);
     final nextItems = items.toList(growable: true);
     nextItems[index] = item.copyWith(rect: nextRect);
-    widget.controller.select(itemId);
+    _selectItem(itemId);
     widget.controller.replaceItems(nextItems);
   }
 
@@ -397,10 +474,14 @@ class _StackBoardState extends State<StackBoard> {
     final index = items.indexWhere((e) => e.id == itemId);
     if (index < 0) return;
     final item = items[index];
-    final nextRect = _resolveRectForItem(item, startRect.shift(offsetFromOrigin), items);
+    final nextRect = _resolveRectForItem(
+      item,
+      startRect.shift(offsetFromOrigin),
+      items,
+    );
     final nextItems = items.toList(growable: true);
     nextItems[index] = item.copyWith(rect: nextRect);
-    widget.controller.select(itemId);
+    _selectItem(itemId);
     widget.controller.replaceItems(nextItems);
   }
 
@@ -409,20 +490,44 @@ class _StackBoardState extends State<StackBoard> {
     final index = items.indexWhere((e) => e.id == itemId);
     if (index < 0) return;
     final item = items[index];
+
     final nextItems = items.toList(growable: true);
-    nextItems[index] = item.copyWith(
-      data: Map<String, dynamic>.from(nextData),
-    );
+    nextItems[index] = item.copyWith(data: Map<String, dynamic>.from(nextData));
     widget.controller.replaceItems(nextItems);
+  }
+
+  void _resizeItemToMeasuredSize(int itemId, Size measured) {
+    if (measured.width <= 0 || measured.height <= 0) return;
+    final items = widget.controller.items.toList(growable: false);
+    final index = items.indexWhere((e) => e.id == itemId);
+    if (index < 0) return;
+    final item = items[index];
+    const epsilon = 0.5;
+    if ((item.rect.width - measured.width).abs() < epsilon &&
+        (item.rect.height - measured.height).abs() < epsilon) {
+      return;
+    }
+
+    final candidate = Rect.fromLTWH(
+      item.rect.left,
+      item.rect.top,
+      measured.width,
+      measured.height,
+    );
+    final nextRect = _resolveRectForItem(item, candidate, items);
+    if (nextRect == item.rect) return;
+    final nextItems = items.toList(growable: true);
+    nextItems[index] = item.copyWith(rect: nextRect);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      widget.controller.replaceItems(nextItems);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.pointerEventsThrough) {
-      return IgnorePointer(
-        ignoring: true,
-        child: _buildBoard(),
-      );
+      return IgnorePointer(ignoring: true, child: _buildBoard());
     }
     return _buildBoard();
   }
@@ -432,8 +537,10 @@ class _StackBoardState extends State<StackBoard> {
       animation: widget.controller,
       builder: (context, _) => LayoutBuilder(
         builder: (context, constraints) {
-          final boardWidth = (constraints.maxWidth - (widget.outerGap * 2)).clamp(0.0, double.infinity);
-          final boardHeight = (constraints.maxHeight - (widget.outerGap * 2)).clamp(0.0, double.infinity);
+          final boardWidth = (constraints.maxWidth - (widget.outerGap * 2))
+              .clamp(0.0, double.infinity);
+          final boardHeight = (constraints.maxHeight - (widget.outerGap * 2))
+              .clamp(0.0, double.infinity);
           _boardSize = Size(boardWidth, boardHeight);
           if (_boardSize != _lastLayoutBoardSize) {
             final oldSize = _lastLayoutBoardSize;
@@ -461,17 +568,21 @@ class _StackBoardState extends State<StackBoard> {
                   Positioned(
                     left: item.rect.left,
                     top: item.rect.top,
-                    width: item.rect.width,
-                    height: item.rect.height,
+                    width: item.template.autoSizeToChild
+                        ? null
+                        : item.rect.width,
+                    height: item.template.autoSizeToChild
+                        ? null
+                        : item.rect.height,
                     child: Listener(
-                      onPointerDown: (_) => widget.controller.select(item.id),
+                      onPointerDown: (_) => _selectItem(item.id),
                       child: GestureDetector(
                         onLongPressStart: item.draggable
                             ? (_) {
                                 _dragEndTimer?.cancel();
                                 _draggingItemId = item.id;
                                 _dragStartRect = item.rect;
-                                widget.controller.select(item.id);
+                                _selectItem(item.id);
                               }
                             : null,
                         onPanStart: item.draggable && _draggingItemId == item.id
@@ -479,48 +590,70 @@ class _StackBoardState extends State<StackBoard> {
                                 _dragEndTimer?.cancel();
                               }
                             : null,
-                        onPanUpdate: item.draggable && _draggingItemId == item.id ? (details) => _moveItemByDelta(item.id, details.delta) : null,
+                        onPanUpdate:
+                            item.draggable && _draggingItemId == item.id
+                            ? (details) =>
+                                  _moveItemByDelta(item.id, details.delta)
+                            : null,
                         onPanEnd: item.draggable && _draggingItemId == item.id
                             ? (_) {
                                 final endedId = item.id;
                                 _dragEndTimer?.cancel();
-                                _dragEndTimer = Timer(widget.dragStateExitDelay, () {
-                                  if (!mounted) return;
-                                  if (_draggingItemId == endedId) {
-                                    setState(() {
-                                      _draggingItemId = null;
-                                    });
-                                  }
-                                });
+                                _dragEndTimer = Timer(
+                                  widget.dragStateExitDelay,
+                                  () {
+                                    if (!mounted) return;
+                                    if (_draggingItemId == endedId) {
+                                      setState(() {
+                                        _draggingItemId = null;
+                                      });
+                                    }
+                                  },
+                                );
                               }
                             : null,
-                        onLongPressMoveUpdate: item.draggable ? (details) => _moveItemFromDragStart(item.id, details.offsetFromOrigin) : null,
+                        onLongPressMoveUpdate: item.draggable
+                            ? (details) => _moveItemFromDragStart(
+                                item.id,
+                                details.offsetFromOrigin,
+                              )
+                            : null,
                         onLongPressEnd: item.draggable
                             ? (_) {
                                 final endedId = item.id;
                                 _dragStartRect = null;
                                 _dragEndTimer?.cancel();
-                                _dragEndTimer = Timer(widget.dragStateExitDelay, () {
-                                  if (!mounted) return;
-                                  if (_draggingItemId == endedId) {
-                                    setState(() {
-                                      _draggingItemId = null;
-                                    });
-                                  }
-                                });
+                                _dragEndTimer = Timer(
+                                  widget.dragStateExitDelay,
+                                  () {
+                                    if (!mounted) return;
+                                    if (_draggingItemId == endedId) {
+                                      setState(() {
+                                        _draggingItemId = null;
+                                      });
+                                    }
+                                  },
+                                );
                               }
                             : null,
-                        child: item.template.builder(
-                          context,
-                          item.id == widget.controller.selectedId,
-                          item.data,
-                          (nextData) => _updateItemData(item.id, nextData),
+                        child: _MeasureSize(
+                          onChanged: item.template.autoSizeToChild
+                              ? (size) =>
+                                    _resizeItemToMeasuredSize(item.id, size)
+                              : null,
+                          child: item.template.builder(
+                            context,
+                            item.id == widget.controller.selectedId,
+                            item.data,
+                            (nextData) => _updateItemData(item.id, nextData),
+                          ),
                         ),
                       ),
                     ),
                   ),
                 for (final item in widget.controller.items)
-                  if (item.id == widget.controller.selectedId || item.id == _draggingItemId)
+                  if (item.id == _selectedFrameItemId ||
+                      item.id == _draggingItemId)
                     Positioned(
                       left: item.rect.left - 1,
                       top: item.rect.top - 1,
@@ -529,7 +662,12 @@ class _StackBoardState extends State<StackBoard> {
                       child: IgnorePointer(
                         child: DecoratedBox(
                           decoration: BoxDecoration(
-                            border: Border.all(color: _draggingItemId == item.id ? Colors.deepOrange : Colors.blue, width: _draggingItemId == item.id ? 3 : 2),
+                            border: Border.all(
+                              color: _draggingItemId == item.id
+                                  ? Colors.deepOrange
+                                  : Colors.blue,
+                              width: _draggingItemId == item.id ? 3 : 2,
+                            ),
                             borderRadius: BorderRadius.circular(9),
                           ),
                         ),
@@ -541,5 +679,41 @@ class _StackBoardState extends State<StackBoard> {
         },
       ),
     );
+  }
+}
+
+typedef _OnWidgetSizeChanged = void Function(Size size);
+
+class _MeasureSize extends SingleChildRenderObjectWidget {
+  const _MeasureSize({required this.onChanged, required super.child});
+
+  final _OnWidgetSizeChanged? onChanged;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _MeasureSizeRenderObject(onChanged);
+  }
+
+  @override
+  void updateRenderObject(BuildContext context, RenderObject renderObject) {
+    (renderObject as _MeasureSizeRenderObject).onChanged = onChanged;
+  }
+}
+
+class _MeasureSizeRenderObject extends RenderProxyBox {
+  _MeasureSizeRenderObject(this.onChanged);
+
+  _OnWidgetSizeChanged? onChanged;
+  Size? _oldSize;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    final newSize = child?.size;
+    if (newSize == null || newSize == _oldSize) return;
+    _oldSize = newSize;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      onChanged?.call(newSize);
+    });
   }
 }

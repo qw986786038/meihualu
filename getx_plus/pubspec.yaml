@@ -1,0 +1,26 @@
+name: getx_plus
+description: State management and dependency injection for Flutter with a lightweight GetX-style API.
+version: 5.2.0
+homepage: https://github.com/Matkurban
+repository: https://github.com/Matkurban/getx_plus
+topics:
+  - widget
+  - state-management
+  - dependency-injection
+
+environment:
+  sdk: ^3.7.0
+  flutter: ">=3.29.1"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  equatable: ^2.0.8
+  web: ^1.1.1
+
+dev_dependencies:
+  flutter_lints: ^5.0.0
+  flutter_test:
+    sdk: flutter

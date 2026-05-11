@@ -1,0 +1,32 @@
+---
+description: Flutter 插件 camerax 仓库上下文与 Dart/Kotlin 协作约定
+alwaysApply: true
+---
+
+# camerax 项目规则
+
+本仓库是 **Flutter 插件**：Dart 侧通过 **MethodChannel `camerax`** 与 Android 原生通信；Android 入口为 `cn.hwato.camerax.CameraxPlugin`（实现 `FlutterPlugin` + `MethodCallHandler`）。
+
+## 修改代码时
+
+- **Dart**：放在 `lib/`，遵守 `flutter_lints`；公开 API 与 `pubspec.yaml` 中 `flutter.plugin` 声明保持一致。
+- **Android Kotlin**：放在 `android/src/main/kotlin/cn/hwato/camerax/`；在 `onDetachedFromEngine` 里解除 `MethodChannel` 监听（`setMethodCallHandler(null)`），避免泄漏。
+- **新增原生能力**：同时补齐 Dart 封装、MethodChannel 方法名约定、以及 `example` 里可运行的演示（若适用）。
+
+## 风格与范围
+
+- 与现有文件保持同一命名、缩进与包结构；不要为「顺手整理」而大范围重排无关文件。
+- 优先小步、可审查的改动；复杂逻辑拆函数或类，避免巨型 `onMethodCall`。
+
+## 示例：Channel 结果约定
+
+```kotlin
+// 已实现的方法返回数据；未支持的方法必须 notImplemented()
+if (call.method == "getPlatformVersion") {
+    result.success("Android ${android.os.Build.VERSION.RELEASE}")
+} else {
+    result.notImplemented()
+}
+```
+
+Dart 侧调用需与上述 `method` 字符串一致，并处理 `MissingPluginException` / 平台未实现分支。
