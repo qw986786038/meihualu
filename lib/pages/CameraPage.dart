@@ -5,13 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:screenshot/screenshot.dart';
-import 'package:watermark_camera/widgets/WaterMark/WaterMarkWidget.dart';
-import 'package:watermark_camera/widgets/gallery_preview_button.dart';
 import 'package:watermark_camera/widgets/camerax_buttons.dart';
+import 'package:watermark_camera/widgets/gallery_preview_button.dart';
 import 'package:watermark_camera/widgets/stack_board.dart';
 
 import '../widgets/WaterMarkButton.dart';
+import 'WaterMark/WaterMarkSelectPage.dart';
 import 'camera/CameraController.dart';
+import 'camera/WaterMarkController.dart';
 
 class CameraPage extends StatefulWidget {
   const CameraPage({super.key});
@@ -24,15 +25,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   CameraPreviewRatio _photoPreviewRatio = CameraPreviewRatio.ratio3x4;
 
   CameraController cameraController = Get.put(CameraController());
-
-  final _waterMarkTemplate = StackBoardTemplate(
-    templateId: 'WaterMark',
-    label: 'WaterMark',
-    autoSizeToChild: true,
-    builder: (context, selected, data, updateData) =>
-        WaterMarkWidget(data: data, updateData: updateData),
-    defaultAllowOverlap: false,
-  );
+  WaterMarkController waterMarkController = Get.put(WaterMarkController());
 
   bool _locationWarmedUp = false;
 
@@ -47,17 +40,13 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
         return;
       }
 
       try {
         await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.low,
-            timeLimit: Duration(seconds: 3),
-          ),
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.low, timeLimit: Duration(seconds: 3)),
         );
       } catch (_) {
         await Geolocator.getLastKnownPosition();
@@ -65,7 +54,6 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
     } catch (_) {}
   }
 
-  final StackBoardController _controller = StackBoardController();
   bool _didAddDefaultWatermark = false;
 
   void _ensureDefaultWatermarkAfterPreview(Size size) {
@@ -74,27 +62,8 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
     _didAddDefaultWatermark = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _addFromTemplate(
-        _waterMarkTemplate,
-        placement: StackBoardPlacement.bottomLeft,
-        allowOverlap: false,
-        draggable: true,
-      );
+      waterMarkController.addWaterMark();
     });
-  }
-
-  void _addFromTemplate(
-    StackBoardTemplate template, {
-    StackBoardPlacement placement = StackBoardPlacement.topLeft,
-    bool? allowOverlap,
-    bool? draggable,
-  }) {
-    _controller.addFromTemplate(
-      template,
-      placement: placement,
-      allowOverlap: allowOverlap,
-      draggable: draggable,
-    );
   }
 
   Future<void> _openWatermarkSheet() async {
@@ -107,47 +76,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
       builder: (sheetContext) {
         return FractionallySizedBox(
           heightFactor: 0.5,
-          child: SafeArea(
-            top: false,
-            child: Container(
-              width: double.infinity,
-              color: Colors.white,
-              padding: const EdgeInsets.fromLTRB(0, 8, 0, 16),
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  FilledButton.icon(
-                    onPressed: () {
-                      _addFromTemplate(
-                        _waterMarkTemplate,
-                        placement: StackBoardPlacement.bottomRight,
-                        allowOverlap: false,
-                        draggable: true,
-                      );
-                    },
-                    icon: const Icon(Icons.text_fields),
-                    label: const Text('右下角水印'),
-                  ),
-
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      _controller.removeSelected();
-                    },
-                    icon: const Icon(Icons.delete_outline),
-                    label: const Text('删除选中'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () async {
-                      Navigator.of(sheetContext).pop();
-                    },
-                    icon: const Icon(Icons.dashboard_customize_outlined),
-                    label: const Text('关闭面板'),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          child: WaterMarkSelectPage(),
         );
       },
     );
@@ -164,7 +93,6 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
-    _controller.dispose();
   }
 
   @override
@@ -184,11 +112,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
             builder: (_, _) => CameraWidget(
               controller: cameraController.camera,
               fit: BoxFit.cover,
-              previewRatio:
-                  cameraController.camera.operationMode ==
-                      CameraxOperationMode.video
-                  ? CameraPreviewRatio.ratio16x9
-                  : _photoPreviewRatio,
+              previewRatio: cameraController.camera.operationMode == CameraxOperationMode.video ? CameraPreviewRatio.ratio16x9 : _photoPreviewRatio,
               previewLetterboxShift: const Offset(0, 10),
               overlayBuilder: (context, size) {
                 _ensureDefaultWatermarkAfterPreview(size);
@@ -204,8 +128,9 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                       keepEdgeAnchoredOnResize: true,
                       pointerEventsThroughEmptyOnly: true,
                       backgroundColor: Colors.transparent,
+
                       outerGap: 4,
-                      controller: _controller,
+                      controller: waterMarkController.controller,
                     ),
                   ),
                 );
@@ -221,8 +146,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                   CameraPreviewRatioMenuButton(
                     controller: cameraController.camera,
                     photoPreviewRatio: _photoPreviewRatio,
-                    onPhotoPreviewRatioChanged: (value) =>
-                        setState(() => _photoPreviewRatio = value),
+                    onPhotoPreviewRatioChanged: (value) => setState(() => _photoPreviewRatio = value),
                   ),
                   CameraFlashModeButton(controller: cameraController.camera),
                 ],
@@ -237,11 +161,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                   children: [
                     SizedBox(width: 45),
                     SizedBox(width: 24),
-                    Expanded(
-                      child: CameraZoomCapsuleBar(
-                        controller: cameraController.camera,
-                      ),
-                    ),
+                    Expanded(child: CameraZoomCapsuleBar(controller: cameraController.camera)),
                     SizedBox(width: 24),
                     CameraLensSwitchButton(controller: cameraController.camera),
                   ],
@@ -250,9 +170,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
               Row(
                 children: [
                   Spacer(),
-                  CameraPhotoVideoModeButton(
-                    controller: cameraController.camera,
-                  ),
+                  CameraPhotoVideoModeButton(controller: cameraController.camera),
                   Spacer(),
                 ],
               ),
@@ -262,15 +180,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Obx(
-                      () => GalleryPreviewButton(
-                        width: 60,
-                        height: 60,
-                        previewImage:
-                            cameraController.latestPhotoPreviewImage.value,
-                        onTap: () {},
-                      ),
-                    ),
+                    Obx(() => GalleryPreviewButton(width: 60, height: 60, previewImage: cameraController.latestPhotoPreviewImage.value, onTap: () {})),
                     Spacer(),
                     CameraShutterButton(controller: cameraController.camera),
                     Spacer(),
