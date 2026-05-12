@@ -1,21 +1,50 @@
 import 'package:flutter/material.dart';
+import 'package:getx_plus/getx_plus.dart';
+import 'package:watermark_camera/pages/camera/WaterMarkController.dart';
+import 'package:watermark_camera/widgets/WaterMark/watermark_template_view.dart';
 
 class WaterMarkSelectPage extends StatelessWidget {
   const WaterMarkSelectPage({super.key});
 
-  static const List<String> _titles = ['水印 1', '水印 2', '水印 3', '水印 4', '水印 5', '水印 6'];
-
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.paddingOf(context).bottom;
+    final controller = Get.find<WaterMarkController>();
+    final sampleNow = DateTime(2026, 5, 12, 10, 40);
+    const sampleAddress = '广东省深圳市南山区科技园科苑路 15 号';
+    const sampleCoordinate = '经纬度 22.540503, 113.934528';
+    const sampleDistrict = '南山区';
+    const samplePoi = '科技园';
 
     return SafeArea(
       child: GridView.builder(
-        padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + bottom),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 14, crossAxisSpacing: 12, childAspectRatio: 16 / 10),
-        itemCount: _titles.length,
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottom),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 14,
+          crossAxisSpacing: 12,
+          childAspectRatio: 16 / 10,
+        ),
+        itemCount: kWatermarkTemplatePresets.length,
         itemBuilder: (context, index) {
-          return _WaterMarkGridTile(title: _titles[index]);
+          final preset = kWatermarkTemplatePresets[index];
+          return _WaterMarkGridTile(
+            preset: preset,
+            selected: controller.selectedTemplateId.value == preset.id,
+            onTap: () {
+              controller.selectTemplate(preset.id);
+              Navigator.of(context).pop();
+            },
+            child: WatermarkTemplateView(
+              templateId: preset.id,
+              now: sampleNow,
+              address: sampleAddress,
+              coordinateText: sampleCoordinate,
+              districtText: sampleDistrict,
+              poiText: samplePoi,
+              compact: true,
+            ),
+          );
         },
       ),
     );
@@ -23,38 +52,76 @@ class WaterMarkSelectPage extends StatelessWidget {
 }
 
 class _WaterMarkGridTile extends StatelessWidget {
-  const _WaterMarkGridTile({required this.title});
+  const _WaterMarkGridTile({
+    required this.preset,
+    required this.selected,
+    required this.onTap,
+    required this.child,
+  });
 
-  final String title;
+  final WatermarkTemplatePreset preset;
+  final bool selected;
+  final VoidCallback onTap;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final borderColor = selected
+        ? theme.colorScheme.primary
+        : theme.colorScheme.outlineVariant;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45), borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: Container(
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.45), borderRadius: BorderRadius.circular(8)),
-                alignment: Alignment.center,
-                child: Icon(Icons.image_outlined, size: 40, color: Colors.white.withValues(alpha: 0.35)),
-              ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withValues(
+              alpha: 0.45,
             ),
-            Container(height: 4),
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: borderColor, width: selected ? 2 : 1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Container(
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    alignment: Alignment.bottomLeft,
+                    padding: const EdgeInsets.all(8),
+                    child: FittedBox(
+                      alignment: Alignment.bottomLeft,
+                      fit: BoxFit.scaleDown,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 180),
+                        child: child,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  preset.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: selected ? theme.colorScheme.primary : null,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

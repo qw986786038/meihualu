@@ -48,6 +48,8 @@ dependencies:
   getx_plus:
     path: ./getx_plus
   go_router: ^17.2.3
+  fl_amap: 3.5.0
+  native_exif: ^0.8.0
 
 dev_dependencies:
   flutter_test:

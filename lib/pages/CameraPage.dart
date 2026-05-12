@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:camerax/camerax.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:watermark_camera/services/amap_location_service.dart';
 import 'package:watermark_camera/widgets/camerax_buttons.dart';
 import 'package:watermark_camera/widgets/gallery_preview_button.dart';
 import 'package:watermark_camera/widgets/stack_board.dart';
@@ -26,33 +26,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
 
   CameraController cameraController = Get.put(CameraController());
   WaterMarkController waterMarkController = Get.put(WaterMarkController());
-
-  bool _locationWarmedUp = false;
-
-  Future<void> _warmupLocation() async {
-    if (_locationWarmedUp) return;
-    _locationWarmedUp = true;
-    try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return;
-
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        return;
-      }
-
-      try {
-        await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.low, timeLimit: Duration(seconds: 3)),
-        );
-      } catch (_) {
-        await Geolocator.getLastKnownPosition();
-      }
-    } catch (_) {}
-  }
+  final AMapLocationService locationService = Get.find<AMapLocationService>();
 
   bool _didAddDefaultWatermark = false;
 
@@ -86,7 +60,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    unawaited(_warmupLocation());
+    unawaited(locationService.warmupLocation());
   }
 
   @override
@@ -99,6 +73,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(cameraController.refreshLatestPhotoPreview());
+      unawaited(locationService.refreshLocation());
     }
   }
 
@@ -112,7 +87,11 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
             builder: (_, _) => CameraWidget(
               controller: cameraController.camera,
               fit: BoxFit.cover,
-              previewRatio: cameraController.camera.operationMode == CameraxOperationMode.video ? CameraPreviewRatio.ratio16x9 : _photoPreviewRatio,
+              previewRatio:
+                  cameraController.camera.operationMode ==
+                      CameraxOperationMode.video
+                  ? CameraPreviewRatio.ratio16x9
+                  : _photoPreviewRatio,
               previewLetterboxShift: const Offset(0, 10),
               overlayBuilder: (context, size) {
                 _ensureDefaultWatermarkAfterPreview(size);
@@ -146,7 +125,8 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                   CameraPreviewRatioMenuButton(
                     controller: cameraController.camera,
                     photoPreviewRatio: _photoPreviewRatio,
-                    onPhotoPreviewRatioChanged: (value) => setState(() => _photoPreviewRatio = value),
+                    onPhotoPreviewRatioChanged: (value) =>
+                        setState(() => _photoPreviewRatio = value),
                   ),
                   CameraFlashModeButton(controller: cameraController.camera),
                 ],
@@ -161,7 +141,11 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                   children: [
                     SizedBox(width: 45),
                     SizedBox(width: 24),
-                    Expanded(child: CameraZoomCapsuleBar(controller: cameraController.camera)),
+                    Expanded(
+                      child: CameraZoomCapsuleBar(
+                        controller: cameraController.camera,
+                      ),
+                    ),
                     SizedBox(width: 24),
                     CameraLensSwitchButton(controller: cameraController.camera),
                   ],
@@ -170,7 +154,9 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
               Row(
                 children: [
                   Spacer(),
-                  CameraPhotoVideoModeButton(controller: cameraController.camera),
+                  CameraPhotoVideoModeButton(
+                    controller: cameraController.camera,
+                  ),
                   Spacer(),
                 ],
               ),
@@ -180,7 +166,15 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Obx(() => GalleryPreviewButton(width: 60, height: 60, previewImage: cameraController.latestPhotoPreviewImage.value, onTap: () {})),
+                    Obx(
+                      () => GalleryPreviewButton(
+                        width: 60,
+                        height: 60,
+                        previewImage:
+                            cameraController.latestPhotoPreviewImage.value,
+                        onTap: () {},
+                      ),
+                    ),
                     Spacer(),
                     CameraShutterButton(controller: cameraController.camera),
                     Spacer(),

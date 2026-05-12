@@ -168,6 +168,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
+  fl_amap:
+    dependency: "direct main"
+    description:
+      name: fl_amap
+      sha256: bf6102720d1534ba8f1c2b9d9a12b4b45bf521e636f1e312a3b25c3ce379f676
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.5.0"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -326,6 +334,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.8.0"
+  intl:
+    dependency: transitive
+    description:
+      name: intl
+      sha256: "3df61194eb431efc39c4ceba583b95633a403f46c9fd341e550ce0bfa50e9aa5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.20.2"
   leak_tracker:
     dependency: transitive
     description:
@@ -390,6 +406,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.17.0"
+  native_exif:
+    dependency: "direct main"
+    description:
+      name: native_exif
+      sha256: "13976193e3f033c443bab4e6c6698871d54227b4661f175514c2eb9f7920794c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.8.0"
   package_info_plus:
     dependency: transitive
     description:
@@ -613,4 +637,4 @@ packages:
     version: "6.6.1"
 sdks:
   dart: ">=3.11.5 <4.0.0"
-  flutter: ">=3.35.0"
+  flutter: ">=3.41.0"

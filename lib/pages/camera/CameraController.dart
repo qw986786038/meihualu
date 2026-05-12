@@ -1,13 +1,16 @@
 import 'dart:async' show unawaited;
 import 'dart:io';
+import 'dart:math';
 
 import 'package:camerax/camerax.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:image/image.dart' as img;
+import 'package:native_exif/native_exif.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:watermark_camera/services/amap_location_service.dart';
 import 'package:watermark_camera/utils/gallery_saver.dart';
 
 class CameraController extends GetxController {
@@ -15,6 +18,7 @@ class CameraController extends GetxController {
   final camera = CameraxController();
   final screenshotController = ScreenshotController();
   final Rxn<ImageProvider> latestPhotoPreviewImage = Rxn<ImageProvider>();
+  final AMapLocationService _locationService = Get.find<AMapLocationService>();
   static const _albumName = '水印相机';
 
   Future<AssetEntity?> getLatestPhoto() async {
@@ -70,7 +74,9 @@ class CameraController extends GetxController {
   Future<void> _handleCapture(XFile file, CameraxCaptureType type) async {
     if (type == CameraxCaptureType.photo) {
       final merged = await _mergePhotoWithWatermark(file);
-      await _saveToGallery(merged ?? file, type);
+      final output = merged ?? file;
+      await _writeLocationExif(output.path);
+      await _saveToGallery(output, type);
     } else {
       await _saveToGallery(file, type);
     }
@@ -144,6 +150,90 @@ class CameraController extends GetxController {
       isVideo: type == CameraxCaptureType.video,
       album: _albumName,
     );
+  }
+
+  Future<void> _writeLocationExif(String imagePath) async {
+    if (!(Platform.isAndroid || Platform.isIOS)) return;
+    final location = _locationService.latestLocation.value;
+    final latitude = location?.latitude;
+    final longitude = location?.longitude;
+    if (latitude == null || longitude == null) return;
+    final wgs84 = _gcj02ToWgs84(latitude, longitude);
+
+    final lowerPath = imagePath.toLowerCase();
+    if (!(lowerPath.endsWith('.jpg') || lowerPath.endsWith('.jpeg'))) return;
+
+    Exif? exif;
+    try {
+      exif = await Exif.fromPath(imagePath);
+      await exif.writeAttributes(<String, Object>{
+        'GPSLatitude': wgs84.$1.toString(),
+        'GPSLongitude': wgs84.$2.toString(),
+      });
+    } catch (e, st) {
+      assert(() {
+        debugPrint('write GPS exif failed: $e\n$st');
+        return true;
+      }());
+    } finally {
+      await exif?.close();
+    }
+  }
+
+  (double, double) _gcj02ToWgs84(double latitude, double longitude) {
+    if (_isOutOfChina(latitude, longitude)) {
+      return (latitude, longitude);
+    }
+
+    final delta = _delta(latitude, longitude);
+    return (latitude - delta.$1, longitude - delta.$2);
+  }
+
+  (double, double) _delta(double latitude, double longitude) {
+    const a = 6378245.0;
+    const ee = 0.00669342162296594323;
+    final dLat = _transformLatitude(longitude - 105.0, latitude - 35.0);
+    final dLon = _transformLongitude(longitude - 105.0, latitude - 35.0);
+    final radLat = latitude / 180.0 * pi;
+    var magic = sin(radLat);
+    magic = 1 - ee * magic * magic;
+    final sqrtMagic = sqrt(magic);
+
+    final mgLat =
+        (dLat * 180.0) / (((a * (1 - ee)) / (magic * sqrtMagic)) * pi);
+    final mgLon = (dLon * 180.0) / ((a / sqrtMagic) * cos(radLat) * pi);
+    return (mgLat, mgLon);
+  }
+
+  double _transformLatitude(double x, double y) {
+    var ret =
+        -100.0 +
+        2.0 * x +
+        3.0 * y +
+        0.2 * y * y +
+        0.1 * x * y +
+        0.2 * sqrt(x.abs());
+    ret += (20.0 * sin(6.0 * x * pi) + 20.0 * sin(2.0 * x * pi)) * 2.0 / 3.0;
+    ret += (20.0 * sin(y * pi) + 40.0 * sin(y / 3.0 * pi)) * 2.0 / 3.0;
+    ret += (160.0 * sin(y / 12.0 * pi) + 320 * sin(y * pi / 30.0)) * 2.0 / 3.0;
+    return ret;
+  }
+
+  double _transformLongitude(double x, double y) {
+    var ret =
+        300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * sqrt(x.abs());
+    ret += (20.0 * sin(6.0 * x * pi) + 20.0 * sin(2.0 * x * pi)) * 2.0 / 3.0;
+    ret += (20.0 * sin(x * pi) + 40.0 * sin(x / 3.0 * pi)) * 2.0 / 3.0;
+    ret +=
+        (150.0 * sin(x / 12.0 * pi) + 300.0 * sin(x / 30.0 * pi)) * 2.0 / 3.0;
+    return ret;
+  }
+
+  bool _isOutOfChina(double latitude, double longitude) {
+    return longitude < 72.004 ||
+        longitude > 137.8347 ||
+        latitude < 0.8293 ||
+        latitude > 55.8271;
   }
 
   @override
