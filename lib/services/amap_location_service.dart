@@ -135,7 +135,7 @@ class AMapLocationService extends GetxService {
       ),
     );
     if (!initialized) {
-      watermarkAddress.value = '高德定位初始化失败';
+      watermarkAddress.value = '高德定位初始化失败，';
       return false;
     }
 
