@@ -1,9 +1,11 @@
-import 'dart:async' show unawaited;
+import 'dart:async' show Timer, unawaited;
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:camerax/camerax.dart';
 import 'package:flutter/material.dart';
+import 'package:watermark_camera/pages/gallery/latest_media_preview_page.dart';
 import 'package:flutter/services.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:image/image.dart' as img;
@@ -20,6 +22,7 @@ class CameraController extends GetxController {
   final Rxn<ImageProvider> latestPhotoPreviewImage = Rxn<ImageProvider>();
   final AMapLocationService _locationService = Get.find<AMapLocationService>();
   static const _albumName = '水印相机';
+  Timer? _videoWatermarkTimer;
 
   Future<AssetEntity?> getLatestPhoto() async {
     final permission = await PhotoManager.requestPermissionExtend();
@@ -49,6 +52,47 @@ class CameraController extends GetxController {
     await camera.initialize();
     unawaited(refreshLatestPhotoPreview());
     super.onInit();
+  }
+
+  Future<void> startVideoRecording() async {
+    _videoWatermarkTimer?.cancel();
+    await camera.startVideoRecording(
+      watermarkOverlayProvider: () => _captureWatermarkBytes(forVideo: true),
+    );
+    _videoWatermarkTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      unawaited(_refreshRecordingWatermarkOverlay());
+    });
+    unawaited(_refreshRecordingWatermarkOverlay());
+  }
+
+  Future<void> stopVideoRecording() async {
+    _videoWatermarkTimer?.cancel();
+    _videoWatermarkTimer = null;
+    await camera.stopVideoRecording();
+  }
+
+  Future<void> _refreshRecordingWatermarkOverlay() async {
+    final bytes = await _captureWatermarkBytes(forVideo: true);
+    if (bytes == null) return;
+    await camera.updateRecordingWatermarkOverlay(bytes);
+  }
+
+  Future<void> openLatestMedia(BuildContext context) async {
+    final asset = await getLatestPhoto();
+    if (asset == null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('暂无照片或视频，或相册权限未授予')),
+      );
+      return;
+    }
+    if (!context.mounted) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => LatestMediaPreviewPage(asset: asset),
+      ),
+    );
   }
 
   Future<void> refreshLatestPhotoPreview() async {
@@ -83,14 +127,39 @@ class CameraController extends GetxController {
     await refreshLatestPhotoPreview();
   }
 
+  Future<Uint8List?> _captureWatermarkBytes({bool forVideo = false}) async {
+    await WidgetsBinding.instance.endOfFrame;
+    if (forVideo) {
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    final watermarkBytes = await screenshotController.capture(
+      delay: Duration(milliseconds: forVideo ? 120 : 30),
+      pixelRatio: forVideo ? 1.0 : 2.0,
+    );
+    if (watermarkBytes == null || watermarkBytes.isEmpty) return null;
+    if (!forVideo && !_hasVisibleOverlayPixels(watermarkBytes)) return null;
+    return watermarkBytes;
+  }
+
+  bool _hasVisibleOverlayPixels(Uint8List pngBytes) {
+    final decoded = img.decodeImage(pngBytes);
+    if (decoded == null) return false;
+    final stepX = max(1, decoded.width ~/ 24);
+    final stepY = max(1, decoded.height ~/ 24);
+    for (var y = 0; y < decoded.height; y += stepY) {
+      for (var x = 0; x < decoded.width; x += stepX) {
+        final alpha = decoded.getPixel(x, y).a;
+        if (alpha > 12) return true;
+      }
+    }
+    return false;
+  }
+
   Future<XFile?> _mergePhotoWithWatermark(XFile photoFile) async {
     try {
-      await WidgetsBinding.instance.endOfFrame;
-      final watermarkBytes = await screenshotController.capture(
-        delay: const Duration(milliseconds: 30),
-        pixelRatio: 2.0,
-      );
-      if (watermarkBytes == null || watermarkBytes.isEmpty) return null;
+      final watermarkBytes = await _captureWatermarkBytes();
+      if (watermarkBytes == null) return null;
 
       final outPath = _buildWatermarkedPath(photoFile.path);
       var ok = await _cameraxChannel
@@ -238,6 +307,7 @@ class CameraController extends GetxController {
 
   @override
   void onClose() {
+    _videoWatermarkTimer?.cancel();
     camera.dispose();
     super.onClose();
   }

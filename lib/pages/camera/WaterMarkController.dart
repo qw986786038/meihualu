@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:getx_plus/getx_plus.dart';
 
 import '../../widgets/WaterMark/WaterMarkWidget.dart';
@@ -12,12 +13,7 @@ class WaterMarkController extends GetxController {
     templateId: 'WaterMark',
     label: 'WaterMark',
     autoSizeToChild: true,
-    defaultData: <String, dynamic>{
-      kWatermarkDataTemplateId: kDefaultWatermarkTemplateId,
-      kWatermarkDataShowAddress: true,
-      kWatermarkDataShowCoordinate: true,
-      kWatermarkDataShowWeekday: true,
-    },
+    defaultData: createDefaultWatermarkData(),
     builder: (context, selected, data, updateData) =>
         WaterMarkWidget(data: data, updateData: updateData),
     defaultAllowOverlap: false,
@@ -26,12 +22,14 @@ class WaterMarkController extends GetxController {
   void _addTemplate(
     StackBoardTemplate template, {
     StackBoardPlacement placement = StackBoardPlacement.topLeft,
+    EdgeInsets placementMargin = EdgeInsets.zero,
     bool? allowOverlap,
     bool? draggable,
   }) {
     controller.addFromTemplate(
       template,
       placement: placement,
+      placementMargin: placementMargin,
       allowOverlap: allowOverlap,
       draggable: draggable,
     );
@@ -46,6 +44,7 @@ class WaterMarkController extends GetxController {
     _addTemplate(
       waterMarkTemplate,
       placement: StackBoardPlacement.bottomLeft,
+      placementMargin: const EdgeInsets.only(left: 4, bottom: 72),
       allowOverlap: false,
       draggable: true,
     );

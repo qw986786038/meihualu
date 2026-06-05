@@ -71,6 +71,10 @@ android {
 }
 
 dependencies {
+    implementation("androidx.media3:media3-transformer:1.6.0")
+    implementation("androidx.media3:media3-effect:1.6.0")
+    implementation("androidx.media3:media3-common:1.6.0")
+    implementation("androidx.media3:media3-muxer:1.6.0")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.mockito:mockito-core:5.0.0")
 }

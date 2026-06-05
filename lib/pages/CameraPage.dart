@@ -172,11 +172,17 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                         height: 60,
                         previewImage:
                             cameraController.latestPhotoPreviewImage.value,
-                        onTap: () {},
+                        onTap: () =>
+                            unawaited(cameraController.openLatestMedia(context)),
                       ),
                     ),
                     Spacer(),
-                    CameraShutterButton(controller: cameraController.camera),
+                    CameraShutterButton(
+                      controller: cameraController.camera,
+                      onStartVideoRecording:
+                          cameraController.startVideoRecording,
+                      onStopVideoRecording: cameraController.stopVideoRecording,
+                    ),
                     Spacer(),
                     WaterMarkButton(
                       width: 60,

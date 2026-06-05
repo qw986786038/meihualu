@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart' show ChangeNotifier, kIsWeb;
@@ -33,6 +34,35 @@ typedef CameraxCapturedCallback = void Function(
   CameraxCaptureType type,
 );
 
+/// 录像期间提供最新水印截图。
+typedef WatermarkOverlayProvider = Future<Uint8List?> Function();
+
+class _PendingLiveFrame {
+  const _PendingLiveFrame({
+    required this.nv21,
+    required this.width,
+    required this.height,
+    required this.rotation,
+    required this.captureTimeMs,
+  });
+
+  final Uint8List nv21;
+  final int width;
+  final int height;
+  final int rotation;
+  final int captureTimeMs;
+}
+
+class _VideoOverlayKeyframe {
+  const _VideoOverlayKeyframe({
+    required this.offsetMs,
+    required this.path,
+  });
+
+  final int offsetMs;
+  final String path;
+}
+
 /// 相机生命周期状态。
 enum CameraxStatus {
   /// 未初始化。
@@ -59,9 +89,14 @@ class CameraxController extends ChangeNotifier {
   CameraxController({
     this.resolutionPreset = ResolutionPreset.high,
     this.enableAudio = true,
-    this.imageFormatGroup,
+    ImageFormatGroup? imageFormatGroup,
     this.onCaptured,
-  });
+  }) : imageFormatGroup = imageFormatGroup ??
+            (!kIsWeb && Platform.isAndroid
+                ? ImageFormatGroup.yuv420
+                : (!kIsWeb && Platform.isIOS
+                    ? ImageFormatGroup.bgra8888
+                    : null));
   static const double _kExposureLimit = 4.0;
 
   // ---------- 配置 ----------
@@ -91,6 +126,18 @@ class CameraxController extends ChangeNotifier {
   bool _isTakingPicture = false;
   bool _isRecording = false;
   bool _isStreamingImages = false;
+  bool _isLiveWatermarkRecording = false;
+  bool _isEncodingLiveFrame = false;
+  static const int _liveFrameIntervalMs = 100;
+  String? _liveOutputPath;
+  int _liveRecordStartMs = 0;
+  int _lastPumpFrameMs = 0;
+  _PendingLiveFrame? _pendingLiveFrame;
+  int _videoRecordStartMs = 0;
+  String? _videoOverlaySessionId;
+  Uint8List? _fallbackOverlayBytes;
+  final List<_VideoOverlayKeyframe> _videoOverlayKeyframes = [];
+  WatermarkOverlayProvider? _watermarkOverlayProvider;
   CameraxOperationMode _operationMode = CameraxOperationMode.photo;
   Duration _recordingDuration = Duration.zero;
   Timer? _recordingTicker;
@@ -348,14 +395,25 @@ class CameraxController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 开始录像。开始前会自动停止图像流（`camera` 限制不可同时启用）。
-  Future<void> startVideoRecording() async {
+  /// Android 使用图像流实时叠加水印编码，避免事后 Media3 合成崩溃。
+  bool get usesLiveWatermarkRecording => !kIsWeb && Platform.isAndroid;
+
+  /// 开始录像。Android 下实时叠加水印编码。
+  Future<void> startVideoRecording({
+    WatermarkOverlayProvider? watermarkOverlayProvider,
+  }) async {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) return;
     if (_isRecording) return;
     try {
       if (_isStreamingImages) {
         await _stopImageStreamSilently();
+      }
+      if (usesLiveWatermarkRecording) {
+        await _startLiveWatermarkRecording(
+          watermarkOverlayProvider: watermarkOverlayProvider,
+        );
+        return;
       }
       await controller.startVideoRecording();
       _isRecording = true;
@@ -374,11 +432,26 @@ class CameraxController extends ChangeNotifier {
     }
   }
 
+  /// 录像过程中更新水印截图（实时编码路径）。
+  Future<void> updateRecordingWatermarkOverlay(Uint8List? overlayBytes) async {
+    if (!_isRecording || overlayBytes == null || overlayBytes.isEmpty) return;
+    if (!_isLiveWatermarkRecording) return;
+    try {
+      await _cameraxChannel.invokeMethod<void>(
+        'updateLiveWatermarkOverlay',
+        <String, dynamic>{'overlayBytes': overlayBytes},
+      );
+    } catch (_) {}
+  }
+
   /// 结束录像并返回文件。
   Future<XFile?> stopVideoRecording() async {
     final controller = _controller;
     if (controller == null || !_isRecording) return null;
     try {
+      if (_isLiveWatermarkRecording) {
+        return await _stopLiveWatermarkRecording();
+      }
       final file = await controller.stopVideoRecording();
       _isRecording = false;
       _recordingTicker?.cancel();
@@ -390,6 +463,299 @@ class CameraxController extends ChangeNotifier {
     } catch (e) {
       _errorMessage = e.toString();
       _setStatus(CameraxStatus.error);
+      return null;
+    }
+  }
+
+  Future<void> _prepareVideoOverlaySession(
+    WatermarkOverlayProvider? provider,
+  ) async {
+    await _cleanupVideoOverlayKeyframes();
+    _videoRecordStartMs = DateTime.now().millisecondsSinceEpoch;
+    _videoOverlaySessionId = _videoRecordStartMs.toString();
+    _fallbackOverlayBytes = null;
+    if (kIsWeb || !Platform.isAndroid || provider == null) return;
+    final initial = await provider.call();
+    if (initial == null || initial.isEmpty) return;
+    _fallbackOverlayBytes = initial;
+    await _appendVideoOverlayKeyframe(initial, 0);
+  }
+
+  Future<void> _appendVideoOverlayKeyframe(
+    Uint8List overlayBytes,
+    int offsetMs,
+  ) async {
+    final sessionId = _videoOverlaySessionId;
+    if (sessionId == null) return;
+    if (_videoOverlayKeyframes.any((item) => item.offsetMs == offsetMs)) {
+      return;
+    }
+    final path =
+        '${Directory.systemTemp.path}/wm_vid_${sessionId}_$offsetMs.png';
+    await File(path).writeAsBytes(overlayBytes, flush: true);
+    _videoOverlayKeyframes.add(
+      _VideoOverlayKeyframe(offsetMs: offsetMs, path: path),
+    );
+  }
+
+  Future<void> _cleanupVideoOverlayKeyframes() async {
+    for (final keyframe in _videoOverlayKeyframes) {
+      try {
+        final file = File(keyframe.path);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {}
+    }
+    _videoOverlayKeyframes.clear();
+    _videoOverlaySessionId = null;
+    _fallbackOverlayBytes = null;
+  }
+
+  Future<XFile?> _finalizeRecordedVideo(XFile? raw) async {
+    if (raw == null) return null;
+    if (kIsWeb || !Platform.isAndroid) {
+      await _cleanupVideoOverlayKeyframes();
+      return raw;
+    }
+    final overlayBytes = await _resolveVideoOverlayBytes();
+    if (overlayBytes == null || overlayBytes.isEmpty) {
+      await _cleanupVideoOverlayKeyframes();
+      return raw;
+    }
+
+    try {
+      _errorMessage = null;
+      await _waitForVideoFileReady(raw.path);
+      final outPath = _buildWatermarkedVideoPath(raw.path);
+      final keyframes = _videoOverlayKeyframes
+          .map(
+            (item) => <String, dynamic>{
+              'offsetMs': item.offsetMs,
+              'path': item.path,
+            },
+          )
+          .toList();
+      final ok = await _cameraxChannel.invokeMethod<bool>(
+        'mergeVideoWithOverlay',
+        <String, dynamic>{
+          'inputPath': raw.path,
+          'outputPath': outPath,
+          'overlayBytes': overlayBytes,
+          'overlayKeyframes': keyframes,
+        },
+      );
+      if (ok == true && File(outPath).existsSync()) {
+        try {
+          await File(raw.path).delete();
+        } catch (_) {}
+        return XFile(outPath);
+      }
+      _errorMessage = '视频水印合成失败';
+    } catch (e) {
+      _errorMessage = e.toString();
+    } finally {
+      await _cleanupVideoOverlayKeyframes();
+    }
+    return raw;
+  }
+
+  Future<Uint8List?> _resolveVideoOverlayBytes() async {
+    final cached = _fallbackOverlayBytes;
+    if (cached != null && cached.isNotEmpty) return cached;
+    if (_videoOverlayKeyframes.isEmpty) return null;
+    try {
+      return await File(_videoOverlayKeyframes.last.path).readAsBytes();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _waitForVideoFileReady(String path) async {
+    var lastSize = -1;
+    for (var i = 0; i < 60; i++) {
+      final file = File(path);
+      if (await file.exists()) {
+        final size = await file.length();
+        if (size > 0 && size == lastSize) {
+          return;
+        }
+        lastSize = size;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
+  String _buildWatermarkedVideoPath(String sourcePath) {
+    final dot = sourcePath.lastIndexOf('.');
+    if (dot <= 0) return '${sourcePath}_watermarked.mp4';
+    final base = sourcePath.substring(0, dot);
+    final ext = sourcePath.substring(dot);
+    return '${base}_watermarked$ext';
+  }
+
+  Future<void> _startLiveWatermarkRecording({
+    WatermarkOverlayProvider? watermarkOverlayProvider,
+  }) async {
+    final controller = _controller!;
+    _watermarkOverlayProvider = watermarkOverlayProvider;
+    _liveOutputPath =
+        '${Directory.systemTemp.path}/wm_live_${DateTime.now().millisecondsSinceEpoch}.mp4';
+    final initialOverlay = await watermarkOverlayProvider?.call();
+    if (initialOverlay == null || initialOverlay.isEmpty) {
+      throw StateError('watermark overlay capture failed');
+    }
+    final started = await _cameraxChannel.invokeMethod<bool>(
+      'startLiveWatermarkVideoRecording',
+      <String, dynamic>{
+        'outputPath': _liveOutputPath,
+        'overlayBytes': initialOverlay,
+        'captureAspectRatio': _captureAspectRatio,
+      },
+    );
+    if (started != true) {
+      throw StateError('startLiveWatermarkVideoRecording failed');
+    }
+    _liveRecordStartMs = DateTime.now().millisecondsSinceEpoch;
+    _lastPumpFrameMs = 0;
+    _pendingLiveFrame = null;
+    await controller.startImageStream(_handleLiveWatermarkFrame);
+    _isStreamingImages = true;
+    _isLiveWatermarkRecording = true;
+    _isRecording = true;
+    _operationMode = CameraxOperationMode.video;
+    _recordingDuration = Duration.zero;
+    _recordingTicker?.cancel();
+    _recordingTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      _recordingDuration += const Duration(seconds: 1);
+      notifyListeners();
+    });
+    notifyListeners();
+  }
+
+  Future<XFile?> _stopLiveWatermarkRecording() async {
+    final controller = _controller!;
+    _isLiveWatermarkRecording = false;
+    _pendingLiveFrame = null;
+    while (_isEncodingLiveFrame) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+    try {
+      await controller.stopImageStream();
+    } catch (_) {}
+    _isStreamingImages = false;
+    final recordingEndUs =
+        (DateTime.now().millisecondsSinceEpoch - _liveRecordStartMs) * 1000;
+    final ok = await _cameraxChannel.invokeMethod<bool>(
+      'stopLiveWatermarkVideoRecording',
+      <String, dynamic>{'recordingEndUs': recordingEndUs},
+    );
+    _isRecording = false;
+    _watermarkOverlayProvider = null;
+    _recordingTicker?.cancel();
+    _recordingTicker = null;
+    _recordingDuration = Duration.zero;
+    notifyListeners();
+    final path = _liveOutputPath;
+    _liveOutputPath = null;
+    if (ok != true || path == null || !File(path).existsSync()) {
+      return null;
+    }
+    final file = XFile(path);
+    onCaptured?.call(file, CameraxCaptureType.video);
+    return file;
+  }
+
+  void _handleLiveWatermarkFrame(CameraImage image) {
+    if (!_isLiveWatermarkRecording) return;
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (_lastPumpFrameMs > 0 &&
+        now - _lastPumpFrameMs < _liveFrameIntervalMs) {
+      return;
+    }
+
+    final nv21 = _cameraImageToNv21(image);
+    if (nv21 == null) return;
+    final rotation = _controller?.description.sensorOrientation ?? 0;
+    _pendingLiveFrame = _PendingLiveFrame(
+      nv21: nv21,
+      width: image.width,
+      height: image.height,
+      rotation: rotation,
+      captureTimeMs: now,
+    );
+    if (!_isEncodingLiveFrame) {
+      unawaited(_pumpLiveFrameEncoder());
+    }
+  }
+
+  Future<void> _pumpLiveFrameEncoder() async {
+    if (!_isLiveWatermarkRecording || _isEncodingLiveFrame) return;
+    final pending = _pendingLiveFrame;
+    if (pending == null) return;
+
+    _isEncodingLiveFrame = true;
+    _pendingLiveFrame = null;
+    try {
+      final captureTimeUs =
+          (pending.captureTimeMs - _liveRecordStartMs) * 1000;
+      await _cameraxChannel.invokeMethod<bool>(
+        'pushLiveWatermarkVideoFrame',
+        <String, dynamic>{
+          'nv21': pending.nv21,
+          'width': pending.width,
+          'height': pending.height,
+          'rotation': pending.rotation,
+          'captureTimeUs': captureTimeUs,
+        },
+      );
+      _lastPumpFrameMs = pending.captureTimeMs;
+    } catch (_) {
+    } finally {
+      _isEncodingLiveFrame = false;
+      if (_pendingLiveFrame != null) {
+        unawaited(_pumpLiveFrameEncoder());
+      }
+    }
+  }
+
+  Uint8List? _cameraImageToNv21(CameraImage image) {
+    if (image.planes.length < 3) return null;
+    final width = image.width;
+    final height = image.height;
+    if (width <= 0 || height <= 0) return null;
+    final yPlane = image.planes[0];
+    final uPlane = image.planes[1];
+    final vPlane = image.planes[2];
+    final expectedSize = width * height + width * height ~/ 2;
+    final nv21 = Uint8List(expectedSize);
+    try {
+      var yIndex = 0;
+      for (var row = 0; row < height; row++) {
+        final rowOffset = row * yPlane.bytesPerRow;
+        if (rowOffset + width > yPlane.bytes.length) return null;
+        nv21.setRange(yIndex, yIndex + width, yPlane.bytes, rowOffset);
+        yIndex += width;
+      }
+      var uvIndex = width * height;
+      final uvHeight = height ~/ 2;
+      final uvWidth = width ~/ 2;
+      final uPixelStride = uPlane.bytesPerPixel ?? 1;
+      final vPixelStride = vPlane.bytesPerPixel ?? 1;
+      for (var row = 0; row < uvHeight; row++) {
+        for (var col = 0; col < uvWidth; col++) {
+          final uOffset = row * uPlane.bytesPerRow + col * uPixelStride;
+          final vOffset = row * vPlane.bytesPerRow + col * vPixelStride;
+          if (uOffset >= uPlane.bytes.length || vOffset >= vPlane.bytes.length) {
+            return null;
+          }
+          nv21[uvIndex++] = vPlane.bytes[vOffset];
+          nv21[uvIndex++] = uPlane.bytes[uOffset];
+        }
+      }
+      return nv21;
+    } catch (_) {
       return null;
     }
   }
@@ -677,7 +1043,9 @@ class CameraxController extends ChangeNotifier {
   Future<void> startImageStream(void Function(CameraImage image) onImage) async {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) return;
-    if (_isStreamingImages || _isRecording) return;
+    if (_isStreamingImages || (_isRecording && !_isLiveWatermarkRecording)) {
+      return;
+    }
     try {
       await controller.startImageStream(onImage);
       _isStreamingImages = true;
@@ -931,6 +1299,17 @@ class CameraxController extends ChangeNotifier {
   }
 
   Future<void> _releaseAfterDispose() async {
+    if (_isLiveWatermarkRecording) {
+      try {
+        final recordingEndUs =
+            (DateTime.now().millisecondsSinceEpoch - _liveRecordStartMs) * 1000;
+        await _cameraxChannel.invokeMethod<bool>(
+          'stopLiveWatermarkVideoRecording',
+          <String, dynamic>{'recordingEndUs': recordingEndUs},
+        );
+      } catch (_) {}
+      _isLiveWatermarkRecording = false;
+    }
     await _stopImageStreamSilently();
     await _disposeController();
   }

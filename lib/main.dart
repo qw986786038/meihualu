@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:watermark_camera/pages/camera/CameraController.dart';
-import 'package:watermark_camera/pages/camera/WaterMarkController.dart';
 import 'package:watermark_camera/router/app_router.dart';
 import 'package:watermark_camera/services/amap_location_service.dart';
 import 'package:getx_plus/getx_plus.dart';
@@ -9,8 +7,6 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   Get.put(AMapLocationService(), permanent: true);
-  Get.put(CameraController());
-  Get.put(WaterMarkController());
 
   runApp(const WatermarkCameraApp());
 }

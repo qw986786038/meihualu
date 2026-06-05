@@ -378,16 +378,31 @@ class CameraLensSwitchButton extends StatelessWidget {
 
 /// 快门：拍照模式下调用 [CameraxController.takePicture]；录像模式下开始/停止录制。
 class CameraShutterButton extends StatelessWidget {
-  const CameraShutterButton({super.key, required this.controller});
+  const CameraShutterButton({
+    super.key,
+    required this.controller,
+    this.onStartVideoRecording,
+    this.onStopVideoRecording,
+  });
 
   final CameraxController controller;
+  final Future<void> Function()? onStartVideoRecording;
+  final Future<void> Function()? onStopVideoRecording;
 
   Future<void> _onTap(CameraxController c) async {
     if (c.operationMode == CameraxOperationMode.video) {
       if (c.isRecording) {
-        await c.stopVideoRecording();
+        if (onStopVideoRecording != null) {
+          await onStopVideoRecording!();
+        } else {
+          await c.stopVideoRecording();
+        }
       } else {
-        await c.startVideoRecording();
+        if (onStartVideoRecording != null) {
+          await onStartVideoRecording!();
+        } else {
+          await c.startVideoRecording();
+        }
       }
     } else if (!c.isTakingPicture) {
       await c.takePicture();

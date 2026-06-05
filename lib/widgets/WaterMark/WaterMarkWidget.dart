@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:watermark_camera/services/amap_location_service.dart';
+import 'package:watermark_camera/utils/watermark_coordinate_formatter.dart';
 import 'package:watermark_camera/widgets/WaterMark/watermark_settings_sheet.dart';
 import 'package:watermark_camera/widgets/WaterMark/watermark_template_view.dart';
 
@@ -33,9 +34,7 @@ class _WaterMarkWidgetState extends State<WaterMarkWidget> {
       _emitNowData(_now.value);
     });
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      final now = DateTime.now();
-      _emitNowData(now);
-      _now.value = now;
+      _now.value = DateTime.now();
     });
   }
 
@@ -45,60 +44,51 @@ class _WaterMarkWidgetState extends State<WaterMarkWidget> {
     super.dispose();
   }
 
-  String? _formatCoordinate(double? latitude, double? longitude) {
-    if (latitude == null || longitude == null) return null;
-    return '经纬度 ${latitude.toStringAsFixed(6)}, ${longitude.toStringAsFixed(6)}';
+  String _resolveAddress() {
+    final selected = watermarkString(widget.data, kWatermarkDataSelectedAddress);
+    if (selected.isNotEmpty) return selected;
+    if (_locationService.watermarkAddress.value.isNotEmpty) {
+      return _locationService.watermarkAddress.value;
+    }
+    return (widget.data['address'] ?? '定位中...').toString();
   }
 
-  String? _trimToNull(String? value) {
-    final text = value?.trim();
-    if (text == null || text.isEmpty) return null;
-    return text;
+  String? _formatCoordinate(double? latitude, double? longitude) {
+    if (!watermarkBool(widget.data, kWatermarkDataShowCoordinate, fallback: true)) {
+      return null;
+    }
+    return WatermarkCoordinateFormatter.format(
+      latitude,
+      longitude,
+      watermarkString(
+        widget.data,
+        kWatermarkDataCoordinateFormat,
+        fallback: kCoordinateFormatDecimal,
+      ),
+    );
+  }
+
+  String? _formatAltitude(double? altitude) {
+    if (!watermarkBool(widget.data, kWatermarkDataShowAltitude, fallback: false)) {
+      return null;
+    }
+    return WatermarkCoordinateFormatter.formatAltitude(altitude);
   }
 
   Future<void> _openSettingsSheet(String templateId) async {
     if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (sheetContext) {
         return WatermarkSettingsSheet(
+          data: widget.data,
+          updateData: widget.updateData,
           templateId: templateId,
-          templateTitle: watermarkTemplateTitle(templateId),
+          locationService: _locationService,
           initialNow: _now.value,
-          address: _locationService.watermarkAddress.value.isEmpty
-              ? (widget.data['address'] ?? '定位中...').toString()
-              : _locationService.watermarkAddress.value,
-          coordinateText: _formatCoordinate(
-            _locationService.latestLocation.value?.latitude,
-            _locationService.latestLocation.value?.longitude,
-          ),
-          districtText: _trimToNull(
-            _locationService.latestLocation.value?.district,
-          ),
-          poiText: _trimToNull(_locationService.latestLocation.value?.poiName),
-          initialShowAddress:
-              (widget.data[kWatermarkDataShowAddress] as bool?) ?? true,
-          initialShowCoordinate:
-              (widget.data[kWatermarkDataShowCoordinate] as bool?) ?? true,
-          initialShowWeekday:
-              (widget.data[kWatermarkDataShowWeekday] as bool?) ?? true,
-          onShowAddressChanged: (value) {
-            final next = Map<String, dynamic>.from(widget.data);
-            next[kWatermarkDataShowAddress] = value;
-            widget.updateData(next);
-          },
-          onShowCoordinateChanged: (value) {
-            final next = Map<String, dynamic>.from(widget.data);
-            next[kWatermarkDataShowCoordinate] = value;
-            widget.updateData(next);
-          },
-          onShowWeekdayChanged: (value) {
-            final next = Map<String, dynamic>.from(widget.data);
-            next[kWatermarkDataShowWeekday] = value;
-            widget.updateData(next);
-          },
         );
       },
     );
@@ -127,37 +117,85 @@ class _WaterMarkWidgetState extends State<WaterMarkWidget> {
     return Obx(() {
       final now = _now.value;
       final location = _locationService.latestLocation.value;
-      final address = _locationService.watermarkAddress.value.isEmpty
-          ? (widget.data['address'] ?? '定位中...').toString()
-          : _locationService.watermarkAddress.value;
+      final address = _resolveAddress();
       final coordinateText = _formatCoordinate(
         location?.latitude,
         location?.longitude,
       );
-      final templateId =
-          (widget.data[kWatermarkDataTemplateId] ?? kDefaultWatermarkTemplateId)
-              .toString();
-      final showAddress =
-          (widget.data[kWatermarkDataShowAddress] as bool?) ?? true;
-      final showCoordinate =
-          (widget.data[kWatermarkDataShowCoordinate] as bool?) ?? true;
-      final showWeekday =
-          (widget.data[kWatermarkDataShowWeekday] as bool?) ?? true;
+      final altitudeText = _formatAltitude(location?.altitude);
+      final templateId = watermarkString(
+        widget.data,
+        kWatermarkDataTemplateId,
+        fallback: kDefaultWatermarkTemplateId,
+      );
+
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => _openSettingsSheet(templateId),
         child: WatermarkTemplateView(
+          key: ValueKey(
+            '${watermarkString(widget.data, kWatermarkDataCustomTitle)}|'
+            '${watermarkBool(widget.data, kWatermarkDataShowCustomTitle, fallback: false)}|'
+            '${watermarkString(widget.data, kWatermarkDataQuickLabelText, fallback: '现场拍摄')}|'
+            '${watermarkBool(widget.data, kWatermarkDataShowQuickLabel, fallback: false)}',
+          ),
           templateId: templateId,
           now: now,
           address: address,
+          weatherText: _trimToNull(_locationService.watermarkWeather.value),
+          temperatureText:
+              _trimToNull(_locationService.watermarkTemperature.value),
           coordinateText: coordinateText,
-          districtText: _trimToNull(location?.district),
-          poiText: _trimToNull(location?.poiName),
-          showAddress: showAddress,
-          showCoordinate: showCoordinate,
-          showWeekday: showWeekday,
+          altitudeText: altitudeText,
+          showAddress: true,
+          showCoordinate: watermarkBool(
+            widget.data,
+            kWatermarkDataShowCoordinate,
+            fallback: true,
+          ),
+          showWeekday: watermarkBool(
+            widget.data,
+            kWatermarkDataShowWeekday,
+            fallback: true,
+          ),
+          showLogo: watermarkBool(widget.data, kWatermarkDataShowLogo, fallback: false),
+          logoPath: watermarkString(widget.data, kWatermarkDataLogoPath),
+          showQuickLabel: watermarkBool(
+            widget.data,
+            kWatermarkDataShowQuickLabel,
+            fallback: false,
+          ),
+          quickLabelText: watermarkString(
+            widget.data,
+            kWatermarkDataQuickLabelText,
+            fallback: '现场拍摄',
+          ),
+          quickLabelBorderColor: Color(
+            watermarkColorInt(
+              widget.data,
+              kWatermarkDataQuickLabelBorderColor,
+              fallback: 0xFFFFC107,
+            ),
+          ),
+          showCustomTitle: watermarkBool(
+            widget.data,
+            kWatermarkDataShowCustomTitle,
+            fallback: false,
+          ),
+          customTitle: watermarkString(widget.data, kWatermarkDataCustomTitle),
+          showAltitude: watermarkBool(
+            widget.data,
+            kWatermarkDataShowAltitude,
+            fallback: false,
+          ),
         ),
       );
     });
+  }
+
+  String? _trimToNull(String? value) {
+    final text = value?.trim();
+    if (text == null || text.isEmpty) return null;
+    return text;
   }
 }

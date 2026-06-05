@@ -11,10 +11,10 @@ class WaterMarkSelectPage extends StatelessWidget {
     final bottom = MediaQuery.paddingOf(context).bottom;
     final controller = Get.find<WaterMarkController>();
     final sampleNow = DateTime(2026, 5, 12, 10, 40);
-    const sampleAddress = '广东省深圳市南山区科技园科苑路 15 号';
+    const sampleAddress = '深圳市南山区 · 科技园';
+    const sampleWeather = '晴';
+    const sampleTemperature = '26';
     const sampleCoordinate = '经纬度 22.540503, 113.934528';
-    const sampleDistrict = '南山区';
-    const samplePoi = '科技园';
 
     return SafeArea(
       child: GridView.builder(
@@ -39,9 +39,10 @@ class WaterMarkSelectPage extends StatelessWidget {
               templateId: preset.id,
               now: sampleNow,
               address: sampleAddress,
+              weatherText: sampleWeather,
+              temperatureText: sampleTemperature,
               coordinateText: sampleCoordinate,
-              districtText: sampleDistrict,
-              poiText: samplePoi,
+              showCoordinate: true,
               compact: true,
             ),
           );
