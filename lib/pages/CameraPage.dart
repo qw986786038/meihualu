@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:camerax/camerax.dart';
 import 'package:flutter/material.dart';
 import 'package:getx_plus/getx_plus.dart';
+import 'package:go_router/go_router.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:watermark_camera/router/app_paths.dart';
 import 'package:watermark_camera/services/amap_location_service.dart';
+import 'package:watermark_camera/widgets/camera_bottom_bar.dart';
 import 'package:watermark_camera/widgets/camerax_buttons.dart';
 import 'package:watermark_camera/widgets/gallery_preview_button.dart';
 import 'package:watermark_camera/widgets/stack_board.dart';
@@ -194,7 +197,22 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                   ],
                 ),
               ),
-              Container(height: 90),
+              CameraBottomBar(
+                items: [
+                  CameraBottomBarItem(
+                    icon: Icons.photo_camera_outlined,
+                    label: '拍照',
+                    selected: true,
+                    onTap: () {},
+                  ),
+                  CameraBottomBarItem(
+                    icon: Icons.photo_library_outlined,
+                    label: '照片编辑',
+                    onTap: () => context.push(AppPaths.mediaGallery),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
             ],
           ),
         ],

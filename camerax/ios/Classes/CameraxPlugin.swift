@@ -119,6 +119,27 @@ public class CameraxPlugin: NSObject, FlutterPlugin {
         }
       }
 
+    case "removeVideoWatermark":
+      guard let args = call.arguments as? [String: Any],
+        let input = args["inputPath"] as? String,
+        let output = args["outputPath"] as? String
+      else {
+        result(
+          FlutterError(
+            code: "bad_args",
+            message: "inputPath, outputPath",
+            details: nil))
+        return
+      }
+      DispatchQueue.global(qos: .userInitiated).async {
+        do {
+          try cameraxRemoveVideoWatermark(inputPath: input, outputPath: output)
+          DispatchQueue.main.async { result(true) }
+        } catch {
+          DispatchQueue.main.async { result(false) }
+        }
+      }
+
     default:
       result(FlutterMethodNotImplemented)
     }

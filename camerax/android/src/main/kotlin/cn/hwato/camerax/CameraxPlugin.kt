@@ -200,6 +200,28 @@ class CameraxPlugin : FlutterPlugin, MethodCallHandler {
                 }
             }
 
+            "removeVideoWatermark" -> {
+                @Suppress("UNCHECKED_CAST")
+                val args = call.arguments as? Map<String, Any?> ?: run {
+                    result.error("bad_args", "Expected map", null)
+                    return
+                }
+                val input = args["inputPath"] as? String
+                val output = args["outputPath"] as? String
+                if (input == null || output == null) {
+                    result.error("bad_args", "inputPath, outputPath required", null)
+                    return
+                }
+                executor.execute {
+                    val ok = try {
+                        VideoWatermarkRemover.remove(appContext, input, output)
+                    } catch (e: Exception) {
+                        false
+                    }
+                    result.success(ok)
+                }
+            }
+
             else -> result.notImplemented()
         }
     }
