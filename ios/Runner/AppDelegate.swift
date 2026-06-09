@@ -13,6 +13,40 @@ import UIKit
     func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
         GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
         MergeOverlayIos.register(registry: engineBridge.pluginRegistry)
+        AppPathsIos.register(registry: engineBridge.pluginRegistry)
+    }
+}
+
+private enum AppPathsIos {
+    private static let channelName = "cn.hwato.watermark_camera/app_paths"
+    private static let originalStoreDir = "watermark_originals"
+
+    static func register(registry: FlutterPluginRegistry) {
+        let registrar = registry.registrar(forPlugin: "WatermarkAppPathsPlugin")
+        let channel = FlutterMethodChannel(name: channelName, binaryMessenger: registrar.messenger())
+        channel.setMethodCallHandler { call, result in
+            guard call.method == "getOriginalStoreDir" else {
+                result(FlutterMethodNotImplemented)
+                return
+            }
+            guard let documents = FileManager.default.urls(
+                for: .documentDirectory,
+                in: .userDomainMask
+            ).first else {
+                result(FlutterError(code: "NO_DIR", message: "documents unavailable", details: nil))
+                return
+            }
+            let dir = documents.appendingPathComponent(originalStoreDir, isDirectory: true)
+            do {
+                try FileManager.default.createDirectory(
+                    at: dir,
+                    withIntermediateDirectories: true
+                )
+                result(dir.path)
+            } catch {
+                result(FlutterError(code: "NO_DIR", message: error.localizedDescription, details: nil))
+            }
+        }
     }
 }
 

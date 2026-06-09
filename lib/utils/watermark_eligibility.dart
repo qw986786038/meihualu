@@ -7,20 +7,46 @@ const String kWatermarkCameraAlbumName = '水印相机';
 class WatermarkEligibility {
   const WatermarkEligibility._();
 
-  static bool isRemovable({
+  /// 仅本应用「水印相机」相册中的媒体可编辑水印。
+  static bool isEditable({
     required AssetEntity asset,
     required Set<String> watermarkAlbumAssetIds,
   }) {
     if (asset.type != AssetType.image && asset.type != AssetType.video) {
       return false;
     }
-    if (watermarkAlbumAssetIds.contains(asset.id)) return true;
+    return watermarkAlbumAssetIds.contains(asset.id);
+  }
 
-    final title = asset.title?.toLowerCase() ?? '';
-    if (title.contains('watermarked') || title.contains('水印')) {
-      return true;
+  /// 与 [isEditable] 相同：仅「水印相机」相册内媒体可去水印。
+  static bool isRemovable({
+    required AssetEntity asset,
+    required Set<String> watermarkAlbumAssetIds,
+  }) {
+    return isEditable(
+      asset: asset,
+      watermarkAlbumAssetIds: watermarkAlbumAssetIds,
+    );
+  }
+
+  static Future<AssetPathEntity?> findWatermarkAlbum() async {
+    final permission = await PhotoManager.requestPermissionExtend();
+    if (!permission.hasAccess) return null;
+
+    final albums = await PhotoManager.getAssetPathList(
+      type: RequestType.common,
+      filterOption: FilterOptionGroup(
+        orders: [
+          const OrderOption(type: OrderOptionType.createDate, asc: false),
+        ],
+      ),
+    );
+    for (final album in albums) {
+      if (album.name == kWatermarkCameraAlbumName) {
+        return album;
+      }
     }
-    return false;
+    return null;
   }
 
   static Future<Set<String>> loadWatermarkAlbumAssetIds() async {

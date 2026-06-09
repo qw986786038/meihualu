@@ -5,7 +5,7 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:watermark_camera/pages/gallery/media_gallery_controller.dart';
 import 'package:watermark_camera/utils/watermark_eligibility.dart';
 
-class AiRemoveWatermarkController extends GetxController {
+class EditWatermarkController extends GetxController {
   final RxList<AssetEntity> assets = <AssetEntity>[].obs;
   final RxBool isLoading = true.obs;
   final Rxn<String> permissionMessage = Rxn<String>();
@@ -28,8 +28,8 @@ class AiRemoveWatermarkController extends GetxController {
         .toList();
   }
 
-  bool isRemovable(AssetEntity asset) {
-    return WatermarkEligibility.isRemovable(
+  bool isEditable(AssetEntity asset) {
+    return WatermarkEligibility.isEditable(
       asset: asset,
       watermarkAlbumAssetIds: watermarkAlbumAssetIds,
     );
@@ -60,12 +60,21 @@ class AiRemoveWatermarkController extends GetxController {
       ..clear()
       ..addAll(await WatermarkEligibility.loadWatermarkAlbumAssetIds());
 
-    _album = await WatermarkEligibility.findWatermarkAlbum();
-    if (_album == null) {
+    final albums = await PhotoManager.getAssetPathList(
+      type: RequestType.common,
+      onlyAll: true,
+      filterOption: FilterOptionGroup(
+        orders: [
+          const OrderOption(type: OrderOptionType.createDate, asc: false),
+        ],
+      ),
+    );
+    if (albums.isEmpty) {
       isLoading.value = false;
       return;
     }
 
+    _album = albums.first;
     await _loadNextPage();
     isLoading.value = false;
   }

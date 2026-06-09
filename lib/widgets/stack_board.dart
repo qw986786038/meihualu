@@ -47,6 +47,7 @@ class StackBoardTemplate {
     Size? size,
     bool? allowOverlap,
     bool? draggable,
+    Map<String, dynamic>? data,
   }) {
     final resolvedSize = size ?? defaultSize;
     final p =
@@ -63,7 +64,7 @@ class StackBoardTemplate {
       rect: Rect.fromLTWH(p.dx, p.dy, resolvedSize.width, resolvedSize.height),
       allowOverlap: allowOverlap ?? defaultAllowOverlap,
       draggable: draggable ?? defaultDraggable,
-      data: Map<String, dynamic>.from(defaultData),
+      data: Map<String, dynamic>.from(data ?? defaultData),
     );
   }
 
@@ -145,6 +146,7 @@ class StackBoardController extends ChangeNotifier {
     bool? allowOverlap,
     bool? draggable,
     Size? size,
+    Map<String, dynamic>? data,
   }) {
     final item = template.createItem(
       id: ++_idSeed,
@@ -155,6 +157,7 @@ class StackBoardController extends ChangeNotifier {
       allowOverlap: allowOverlap,
       draggable: draggable,
       size: size,
+      data: data,
     );
     _items.add(item);
     _selectedId = item.id;
@@ -164,8 +167,14 @@ class StackBoardController extends ChangeNotifier {
 
   void removeSelected() {
     if (_selectedId == null) return;
-    _items.removeWhere((e) => e.id == _selectedId);
-    _selectedId = null;
+    removeItem(_selectedId!);
+  }
+
+  void removeItem(int id) {
+    _items.removeWhere((e) => e.id == id);
+    if (_selectedId == id) {
+      _selectedId = null;
+    }
     notifyListeners();
   }
 
@@ -585,9 +594,12 @@ class _StackBoardState extends State<StackBoard> {
                                 _selectItem(item.id);
                               }
                             : null,
-                        onPanStart: item.draggable && _draggingItemId == item.id
+                        onPanStart: item.draggable
                             ? (_) {
                                 _dragEndTimer?.cancel();
+                                _draggingItemId = item.id;
+                                _dragStartRect = item.rect;
+                                _selectItem(item.id);
                               }
                             : null,
                         onPanUpdate:

@@ -5,7 +5,7 @@ import 'package:getx_plus/getx_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:watermark_camera/router/app_paths.dart';
-import 'package:watermark_camera/pages/gallery/latest_media_preview_page.dart';
+import 'package:watermark_camera/pages/gallery/media_watermark_editor_page.dart';
 import 'package:watermark_camera/pages/gallery/media_gallery_controller.dart';
 
 const Color _kPrimaryBlue = Color(0xFF2F7CF6);
@@ -46,11 +46,14 @@ class _MediaGalleryPageState extends State<MediaGalleryPage> {
       return;
     }
 
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => LatestMediaPreviewPage(asset: asset),
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => MediaWatermarkEditorPage(asset: asset),
       ),
     );
+    if (saved == true) {
+      await controller.loadInitialAssets();
+    }
   }
 
   void _onFeatureTap(MediaGalleryFeature feature) {
@@ -213,8 +216,7 @@ class _MediaGalleryPageState extends State<MediaGalleryPage> {
                 child: _PrimaryFeatureCard(
                   icon: Icons.edit_outlined,
                   label: '编辑水印',
-                  onTap: () =>
-                      _onFeatureTap(MediaGalleryFeature.editWatermark),
+                  onTap: () => context.push(AppPaths.editWatermark),
                 ),
               ),
               const SizedBox(width: 12),

@@ -5,6 +5,7 @@ import 'package:watermark_camera/pages/HomePage.dart';
 import 'package:watermark_camera/pages/WelcomePage.dart';
 import 'package:watermark_camera/pages/gallery/media_gallery_page.dart';
 import 'package:watermark_camera/pages/gallery/ai_remove_watermark_picker_page.dart';
+import 'package:watermark_camera/pages/gallery/edit_watermark_picker_page.dart';
 import 'package:watermark_camera/pages/gallery/media_multi_select_page.dart';
 
 import 'app_paths.dart';
@@ -32,6 +33,12 @@ final GoRouter appRouter = GoRouter(
       name: 'aiRemoveWatermark',
       builder: (BuildContext context, GoRouterState state) =>
           const AiRemoveWatermarkPickerPage(),
+    ),
+    GoRoute(
+      path: AppPaths.editWatermark,
+      name: 'editWatermark',
+      builder: (BuildContext context, GoRouterState state) =>
+          const EditWatermarkPickerPage(),
     ),
   ],
 );

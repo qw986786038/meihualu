@@ -12,8 +12,12 @@ import 'package:image/image.dart' as img;
 import 'package:native_exif/native_exif.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:watermark_camera/pages/camera/WaterMarkController.dart';
 import 'package:watermark_camera/services/amap_location_service.dart';
 import 'package:watermark_camera/utils/gallery_saver.dart';
+import 'package:watermark_camera/utils/watermark_metadata.dart';
+import 'package:watermark_camera/utils/watermark_original_store.dart';
+import 'package:watermark_camera/widgets/stack_board.dart';
 
 class CameraController extends GetxController {
   static const MethodChannel _cameraxChannel = MethodChannel('camerax');
@@ -117,9 +121,11 @@ class CameraController extends GetxController {
 
   Future<void> _handleCapture(XFile file, CameraxCaptureType type) async {
     if (type == CameraxCaptureType.photo) {
+      final originalId = await WatermarkOriginalStore.saveFromPath(file.path);
       final merged = await _mergePhotoWithWatermark(file);
       final output = merged ?? file;
       await _writeLocationExif(output.path);
+      await _writeWatermarkMeta(output.path, originalId: originalId);
       await _saveToGallery(output, type);
     } else {
       await _saveToGallery(file, type);
@@ -218,6 +224,33 @@ class CameraController extends GetxController {
       file.path,
       isVideo: type == CameraxCaptureType.video,
       album: _albumName,
+    );
+  }
+
+  Future<void> _writeWatermarkMeta(
+    String imagePath, {
+    String? originalId,
+  }) async {
+    if (!Get.isRegistered<WaterMarkController>()) return;
+    final wmController = Get.find<WaterMarkController>();
+    StackBoardItem? item;
+    for (final candidate in wmController.controller.items) {
+      if (candidate.template.templateId == 'WaterMark') {
+        item = candidate;
+        break;
+      }
+    }
+    if (item == null) return;
+
+    final boardSize = wmController.controller.boardSize;
+    if (boardSize.width <= 0 || boardSize.height <= 0) return;
+
+    await WatermarkMetadata.writeToImagePath(
+      imagePath,
+      data: Map<String, dynamic>.from(item.data),
+      rect: item.rect,
+      boardSize: boardSize,
+      originalId: originalId,
     );
   }
 

@@ -4,28 +4,26 @@ import 'package:flutter/material.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:photo_manager/photo_manager.dart';
-import 'package:watermark_camera/pages/gallery/ai_remove_watermark_controller.dart';
-import 'package:watermark_camera/pages/gallery/ai_remove_watermark_result_page.dart';
+import 'package:watermark_camera/pages/gallery/edit_watermark_controller.dart';
+import 'package:watermark_camera/pages/gallery/media_watermark_editor_page.dart';
 
 const Color _kPrimaryBlue = Color(0xFF2F7CF6);
 
-class AiRemoveWatermarkPickerPage extends StatefulWidget {
-  const AiRemoveWatermarkPickerPage({super.key});
+class EditWatermarkPickerPage extends StatefulWidget {
+  const EditWatermarkPickerPage({super.key});
 
   @override
-  State<AiRemoveWatermarkPickerPage> createState() =>
-      _AiRemoveWatermarkPickerPageState();
+  State<EditWatermarkPickerPage> createState() =>
+      _EditWatermarkPickerPageState();
 }
 
-class _AiRemoveWatermarkPickerPageState
-    extends State<AiRemoveWatermarkPickerPage> {
-  final AiRemoveWatermarkController controller =
-      Get.put(AiRemoveWatermarkController());
+class _EditWatermarkPickerPageState extends State<EditWatermarkPickerPage> {
+  final EditWatermarkController controller = Get.put(EditWatermarkController());
 
   @override
   void dispose() {
-    if (Get.isRegistered<AiRemoveWatermarkController>()) {
-      Get.delete<AiRemoveWatermarkController>();
+    if (Get.isRegistered<EditWatermarkController>()) {
+      Get.delete<EditWatermarkController>();
     }
     super.dispose();
   }
@@ -38,14 +36,17 @@ class _AiRemoveWatermarkPickerPageState
   }
 
   Future<void> _onAssetTap(AssetEntity asset) async {
-    if (!controller.isRemovable(asset)) {
-      _showSnack('仅支持去除本应用「水印相机」相册中的水印');
+    if (!controller.isEditable(asset)) {
+      _showSnack('该照片或视频不支持编辑水印');
       return;
     }
 
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
-        builder: (_) => AiRemoveWatermarkResultPage(asset: asset),
+        builder: (_) => MediaWatermarkEditorPage(
+          asset: asset,
+          autoOpenWatermarkSettings: true,
+        ),
       ),
     );
     if (saved == true) {
@@ -80,7 +81,7 @@ class _AiRemoveWatermarkPickerPageState
                 if (controller.assets.isEmpty) {
                   return _buildEmptyState(
                     icon: Icons.image_not_supported_outlined,
-                    title: '暂无本应用水印照片或视频',
+                    title: '暂无照片或视频',
                     actionLabel: '刷新',
                     onAction: controller.loadInitialAssets,
                   );
@@ -135,7 +136,7 @@ class _AiRemoveWatermarkPickerPageState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '请选择本应用水印照片或视频',
+            '请选择一张本应用水印照片或视频',
             style: TextStyle(
               color: _kPrimaryBlue,
               fontSize: 16,
@@ -144,7 +145,7 @@ class _AiRemoveWatermarkPickerPageState
           ),
           SizedBox(height: 4),
           Text(
-            '仅显示「水印相机」相册中的内容，其他应用水印无法去除',
+            '已为您过滤非本应用水印的照片和视频',
             style: TextStyle(
               color: Color(0xFF999999),
               fontSize: 13,
@@ -194,10 +195,10 @@ class _AiRemoveWatermarkPickerPageState
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final asset = group.assets[index];
-                      final removable = controller.isRemovable(asset);
-                      return _RemovableThumbnail(
+                      final editable = controller.isEditable(asset);
+                      return _EditableThumbnail(
                         asset: asset,
-                        removable: removable,
+                        editable: editable,
                         onTap: () => _onAssetTap(asset),
                       );
                     },
@@ -234,15 +235,15 @@ class _AiRemoveWatermarkPickerPageState
   }
 }
 
-class _RemovableThumbnail extends StatelessWidget {
-  const _RemovableThumbnail({
+class _EditableThumbnail extends StatelessWidget {
+  const _EditableThumbnail({
     required this.asset,
-    required this.removable,
+    required this.editable,
     required this.onTap,
   });
 
   final AssetEntity asset;
-  final bool removable;
+  final bool editable;
   final VoidCallback onTap;
 
   @override
@@ -255,7 +256,7 @@ class _RemovableThumbnail extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: ColorFiltered(
-              colorFilter: removable
+              colorFilter: editable
                   ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
                   : ColorFilter.mode(
                       Colors.white.withValues(alpha: 0.55),
@@ -278,7 +279,7 @@ class _RemovableThumbnail extends StatelessWidget {
                     );
                   }
                   return Opacity(
-                    opacity: removable ? 1 : 0.45,
+                    opacity: editable ? 1 : 0.45,
                     child: Image.memory(data, fit: BoxFit.cover),
                   );
                 },
@@ -307,7 +308,7 @@ class _RemovableThumbnail extends StatelessWidget {
                 ),
               ),
             ),
-          if (!removable)
+          if (!editable)
             Positioned(
               right: 6,
               bottom: 6,

@@ -24,11 +24,25 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val CHANNEL = "cn.hwato.watermark_camera/merge_overlay"
+        private const val APP_PATHS_CHANNEL = "cn.hwato.watermark_camera/app_paths"
+        private const val ORIGINAL_STORE_DIR = "watermark_originals"
         private val backgroundExecutor = Executors.newCachedThreadPool()
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, APP_PATHS_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                if (call.method == "getOriginalStoreDir") {
+                    val dir = File(applicationContext.filesDir, ORIGINAL_STORE_DIR)
+                    if (!dir.exists()) {
+                        dir.mkdirs()
+                    }
+                    result.success(dir.absolutePath)
+                    return@setMethodCallHandler
+                }
+                result.notImplemented()
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             if (call.method != "mergeOverlayJpeg") {
                 result.notImplemented()

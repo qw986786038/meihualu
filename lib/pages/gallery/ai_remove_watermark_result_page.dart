@@ -69,6 +69,16 @@ class _AiRemoveWatermarkResultPageState extends State<AiRemoveWatermarkResultPag
       _resultThumb = null;
     });
 
+    final canRemove = await WatermarkRemovalService.canRemoveAsset(widget.asset);
+    if (!canRemove) {
+      if (!mounted) return;
+      setState(() {
+        _isProcessing = false;
+        _errorMessage = '仅支持去除本应用「水印相机」相册中的水印';
+      });
+      return;
+    }
+
     final file = await widget.asset.file;
     if (file == null || !file.existsSync()) {
       if (!mounted) return;
@@ -79,7 +89,7 @@ class _AiRemoveWatermarkResultPageState extends State<AiRemoveWatermarkResultPag
       return;
     }
 
-    final output = await WatermarkRemovalService.removeWatermarkFromAsset(
+    final output = await WatermarkRemovalService.removeAppWatermarkFromAsset(
       widget.asset,
     );
     if (!mounted) return;
@@ -118,7 +128,7 @@ class _AiRemoveWatermarkResultPageState extends State<AiRemoveWatermarkResultPag
         SnackBar(content: Text(ok ? '已保存到相册' : '保存失败')),
       );
     if (ok) {
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(true);
     }
   }
 

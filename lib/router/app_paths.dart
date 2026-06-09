@@ -7,4 +7,5 @@ abstract final class AppPaths {
   static const mediaGallery = '/gallery/media';
   static const mediaMultiSelect = '/gallery/multi-select';
   static const aiRemoveWatermark = '/gallery/ai-remove-watermark';
+  static const editWatermark = '/gallery/edit-watermark';
 }
