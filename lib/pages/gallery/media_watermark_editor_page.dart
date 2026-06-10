@@ -4,7 +4,9 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:getx_plus/getx_plus.dart';
+import 'package:go_router/go_router.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'package:watermark_camera/router/app_paths.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:watermark_camera/pages/gallery/media_watermark_editor_controller.dart';
 import 'package:watermark_camera/utils/gallery_saver.dart';
@@ -155,7 +157,7 @@ class _MediaWatermarkEditorPageState extends State<MediaWatermarkEditorPage> {
               : '去水印失败，该照片可能不是本应用水印',
         );
       case '批量加水印':
-        _showSnack('$label功能即将开放');
+        context.push(AppPaths.batchAddWatermark);
     }
   }
 

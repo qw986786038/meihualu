@@ -7,6 +7,16 @@ import 'package:geolocator/geolocator.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:http/http.dart' as http;
 
+class MapTrackPoint {
+  const MapTrackPoint({
+    required this.latitude,
+    required this.longitude,
+  });
+
+  final double latitude;
+  final double longitude;
+}
+
 class AMapLocationService extends GetxService {
   static const String _androidKey = "21c92e09642734eba87362262756398e";
   static const String _iosKey = String.fromEnvironment('AMAP_IOS_KEY');
@@ -336,6 +346,41 @@ class AMapLocationService extends GetxService {
         return true;
       }());
     }
+  }
+
+  String buildStaticMapUrl({
+    required double longitude,
+    required double latitude,
+    int zoom = 16,
+    int width = 120,
+    int height = 90,
+    List<MapTrackPoint>? trackPoints,
+  }) {
+    final location = '$longitude,$latitude';
+    final size = '${width.clamp(40, 1024)}*${height.clamp(40, 1024)}';
+    final markers = Uri.encodeComponent('mid,,A:$location');
+    final buffer = StringBuffer(
+      'https://restapi.amap.com/v3/staticmap'
+      '?location=$location'
+      '&zoom=${zoom.clamp(3, 18)}'
+      '&size=$size'
+      '&markers=$markers'
+      '&scale=2'
+      '&key=$_webServiceKey',
+    );
+    final path = _encodeTrackPath(trackPoints);
+    if (path != null) {
+      buffer.write('&paths=$path');
+    }
+    return buffer.toString();
+  }
+
+  String? _encodeTrackPath(List<MapTrackPoint>? trackPoints) {
+    if (trackPoints == null || trackPoints.length < 2) return null;
+    final coords = trackPoints
+        .map((point) => '${point.longitude},${point.latitude}')
+        .join(';');
+    return Uri.encodeComponent('5,0x0088FF,1,,:$coords');
   }
 
   @override

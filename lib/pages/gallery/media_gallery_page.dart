@@ -242,14 +242,12 @@ class _MediaGalleryPageState extends State<MediaGalleryPage> {
               _SecondaryFeatureButton(
                 icon: Icons.branding_watermark_outlined,
                 label: '批量加水印',
-                onTap: () =>
-                    _onFeatureTap(MediaGalleryFeature.batchAddWatermark),
+                onTap: () => context.push(AppPaths.batchAddWatermark),
               ),
               _SecondaryFeatureButton(
                 icon: Icons.layers_clear_outlined,
                 label: '批量去水印',
-                onTap: () =>
-                    _onFeatureTap(MediaGalleryFeature.batchRemoveWatermark),
+                onTap: () => context.push(AppPaths.batchRemoveWatermark),
               ),
               _SecondaryFeatureButton(
                 icon: Icons.drive_file_rename_outline,

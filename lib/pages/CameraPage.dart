@@ -5,9 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:watermark_camera/pages/camera/camera_map_controller.dart';
 import 'package:watermark_camera/router/app_paths.dart';
 import 'package:watermark_camera/services/amap_location_service.dart';
 import 'package:watermark_camera/widgets/camera_bottom_bar.dart';
+import 'package:watermark_camera/widgets/camera_map_overlay.dart';
+import 'package:watermark_camera/widgets/camera_map_settings_sheet.dart';
 import 'package:watermark_camera/widgets/camerax_buttons.dart';
 import 'package:watermark_camera/widgets/gallery_preview_button.dart';
 import 'package:watermark_camera/widgets/stack_board.dart';
@@ -29,6 +32,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
 
   CameraController cameraController = Get.put(CameraController());
   WaterMarkController waterMarkController = Get.put(WaterMarkController());
+  final CameraMapController cameraMapController = Get.put(CameraMapController());
   final AMapLocationService locationService = Get.find<AMapLocationService>();
 
   bool _didAddDefaultWatermark = false;
@@ -41,6 +45,11 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
       if (!mounted) return;
       waterMarkController.addWaterMark();
     });
+  }
+
+  Future<void> _openMapSettingsSheet() async {
+    if (!mounted) return;
+    await showCameraMapSettingsSheet(context);
   }
 
   Future<void> _openWatermarkSheet() async {
@@ -106,13 +115,20 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                   ///水印面板
                   child: Screenshot(
                     controller: cameraController.screenshotController,
-                    child: StackBoard(
-                      keepEdgeAnchoredOnResize: true,
-                      pointerEventsThroughEmptyOnly: true,
-                      backgroundColor: Colors.transparent,
-
-                      outerGap: 4,
-                      controller: waterMarkController.controller,
+                    child: Stack(
+                      children: [
+                        StackBoard(
+                          keepEdgeAnchoredOnResize: true,
+                          pointerEventsThroughEmptyOnly: true,
+                          backgroundColor: Colors.transparent,
+                          outerGap: 4,
+                          controller: waterMarkController.controller,
+                        ),
+                        CameraMapOverlay(
+                          previewSize: size,
+                          onTap: _openMapSettingsSheet,
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -125,6 +141,18 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                 backgroundColor: Colors.transparent,
                 foregroundColor: Colors.white,
                 actions: [
+                  Obx(
+                    () => IconButton(
+                      tooltip: '地图',
+                      onPressed: _openMapSettingsSheet,
+                      icon: Icon(
+                        Icons.map_outlined,
+                        color: cameraMapController.mapEnabled.value
+                            ? Colors.white
+                            : Colors.white54,
+                      ),
+                    ),
+                  ),
                   CameraPreviewRatioMenuButton(
                     controller: cameraController.camera,
                     photoPreviewRatio: _photoPreviewRatio,

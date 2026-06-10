@@ -8,4 +8,9 @@ abstract final class AppPaths {
   static const mediaMultiSelect = '/gallery/multi-select';
   static const aiRemoveWatermark = '/gallery/ai-remove-watermark';
   static const editWatermark = '/gallery/edit-watermark';
+  static const batchAddWatermark = '/gallery/batch-add-watermark';
+  static const batchAddWatermarkPreview = '/gallery/batch-add-watermark/preview';
+  static const batchRemoveWatermark = '/gallery/batch-remove-watermark';
+  static const batchRemoveWatermarkPreview =
+      '/gallery/batch-remove-watermark/preview';
 }
