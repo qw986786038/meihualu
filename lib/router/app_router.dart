@@ -4,6 +4,13 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:watermark_camera/pages/CameraPage.dart';
 import 'package:watermark_camera/pages/HomePage.dart';
 import 'package:watermark_camera/pages/WelcomePage.dart';
+import 'package:watermark_camera/pages/auth/fake_login_page.dart';
+import 'package:watermark_camera/pages/team/create_team_page.dart';
+import 'package:watermark_camera/pages/team/join_team_by_code_page.dart';
+import 'package:watermark_camera/pages/team/join_team_by_name_page.dart';
+import 'package:watermark_camera/pages/team/join_team_page.dart';
+import 'package:watermark_camera/pages/team/team_brand_picker_page.dart';
+import 'package:watermark_camera/pages/team/team_industry_picker_page.dart';
 import 'package:watermark_camera/pages/gallery/media_gallery_page.dart';
 import 'package:watermark_camera/pages/gallery/ai_remove_watermark_picker_page.dart';
 import 'package:watermark_camera/pages/gallery/batch_add_watermark_picker_page.dart';
@@ -27,6 +34,50 @@ final GoRouter appRouter = GoRouter(
     GoRoute(path: AppPaths.welcome, name: 'welcome', builder: (BuildContext context, GoRouterState state) => const WelcomePage()),
     GoRoute(path: AppPaths.home, name: 'home', builder: (BuildContext context, GoRouterState state) => const HomePage()),
     GoRoute(path: AppPaths.camera, name: 'camera', builder: (BuildContext context, GoRouterState state) => const CameraPage()),
+    GoRoute(
+      path: AppPaths.login,
+      name: 'login',
+      builder: (BuildContext context, GoRouterState state) =>
+          const FakeLoginPage(),
+    ),
+    GoRoute(
+      path: AppPaths.createTeam,
+      name: 'createTeam',
+      builder: (BuildContext context, GoRouterState state) =>
+          const CreateTeamPage(),
+    ),
+    GoRoute(
+      path: AppPaths.joinTeam,
+      name: 'joinTeam',
+      builder: (BuildContext context, GoRouterState state) =>
+          const JoinTeamPage(),
+    ),
+    GoRoute(
+      path: AppPaths.joinTeamByCode,
+      name: 'joinTeamByCode',
+      builder: (BuildContext context, GoRouterState state) =>
+          const JoinTeamByCodePage(),
+    ),
+    GoRoute(
+      path: AppPaths.joinTeamByName,
+      name: 'joinTeamByName',
+      builder: (BuildContext context, GoRouterState state) =>
+          const JoinTeamByNamePage(),
+    ),
+    GoRoute(
+      path: AppPaths.teamIndustryPicker,
+      name: 'teamIndustryPicker',
+      builder: (BuildContext context, GoRouterState state) {
+        final initialSelection = state.extra is String ? state.extra as String : null;
+        return TeamIndustryPickerPage(initialSelection: initialSelection);
+      },
+    ),
+    GoRoute(
+      path: AppPaths.teamBrandPicker,
+      name: 'teamBrandPicker',
+      builder: (BuildContext context, GoRouterState state) =>
+          const TeamBrandPickerPage(),
+    ),
     GoRoute(
       path: AppPaths.mediaGallery,
       name: 'mediaGallery',

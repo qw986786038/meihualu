@@ -14,6 +14,7 @@ import 'package:watermark_camera/widgets/camera_map_settings_sheet.dart';
 import 'package:watermark_camera/widgets/camerax_buttons.dart';
 import 'package:watermark_camera/widgets/gallery_preview_button.dart';
 import 'package:watermark_camera/widgets/stack_board.dart';
+import 'package:watermark_camera/widgets/work_mode_bar.dart';
 
 import '../widgets/WaterMarkButton.dart';
 import 'WaterMark/WaterMarkSelectPage.dart';
@@ -191,6 +192,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                   Spacer(),
                 ],
               ),
+              const WorkModeBar(),
               Container(height: 16),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),

@@ -4,6 +4,13 @@ abstract final class AppPaths {
   static const welcome = '/welcome';
   static const home = '/home';
   static const camera = '/camera';
+  static const login = '/login';
+  static const createTeam = '/team/create';
+  static const joinTeam = '/team/join';
+  static const joinTeamByCode = '/team/join/code';
+  static const joinTeamByName = '/team/join/name';
+  static const teamIndustryPicker = '/team/industry';
+  static const teamBrandPicker = '/team/brand';
   static const mediaGallery = '/gallery/media';
   static const mediaMultiSelect = '/gallery/multi-select';
   static const aiRemoveWatermark = '/gallery/ai-remove-watermark';

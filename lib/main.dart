@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:watermark_camera/router/app_router.dart';
 import 'package:watermark_camera/services/amap_location_service.dart';
+import 'package:watermark_camera/services/auth_service.dart';
 import 'package:getx_plus/getx_plus.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   Get.put(AMapLocationService(), permanent: true);
+  Get.put(AuthService(), permanent: true);
 
   runApp(const WatermarkCameraApp());
 }
