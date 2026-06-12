@@ -14,6 +14,8 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:watermark_camera/pages/camera/WaterMarkController.dart';
 import 'package:watermark_camera/services/amap_location_service.dart';
+import 'package:watermark_camera/services/auth_service.dart';
+import 'package:watermark_camera/services/photo_sync_service.dart';
 import 'package:watermark_camera/utils/gallery_saver.dart';
 import 'package:watermark_camera/utils/watermark_metadata.dart';
 import 'package:watermark_camera/utils/watermark_original_store.dart';
@@ -120,15 +122,33 @@ class CameraController extends GetxController {
   }
 
   Future<void> _handleCapture(XFile file, CameraxCaptureType type) async {
+    XFile output = file;
     if (type == CameraxCaptureType.photo) {
       final originalId = await WatermarkOriginalStore.saveFromPath(file.path);
       final merged = await _mergePhotoWithWatermark(file);
-      final output = merged ?? file;
+      output = merged ?? file;
       await _writeLocationExif(output.path);
       await _writeWatermarkMeta(output.path, originalId: originalId);
+    }
+
+    PhotoSyncResult? syncResult;
+    if (Get.isRegistered<AuthService>()) {
+      final auth = Get.find<AuthService>();
+      if (auth.isLoggedIn.value && Get.isRegistered<PhotoSyncService>()) {
+        syncResult = await Get.find<PhotoSyncService>().syncCapture(
+          output.path,
+          isVideo: type == CameraxCaptureType.video,
+          location: _locationService.watermarkAddress.value,
+        );
+      }
+    }
+
+    final skipLocalSave = Get.isRegistered<AuthService>() &&
+        Get.find<AuthService>().skipLocalSaveAfterSync.value &&
+        (syncResult?.anySuccess ?? false);
+
+    if (!skipLocalSave) {
       await _saveToGallery(output, type);
-    } else {
-      await _saveToGallery(file, type);
     }
     await refreshLatestPhotoPreview();
   }

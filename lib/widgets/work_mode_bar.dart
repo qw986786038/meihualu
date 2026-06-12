@@ -37,17 +37,10 @@ class WorkModeBar extends StatelessWidget {
   }
 
   Future<void> _handleTeamTap(BuildContext context, AuthService auth) async {
-    if (!auth.isLoggedIn.value) {
-      await _openLogin(context, focusMode: WorkMode.team);
-      return;
-    }
     auth.setWorkMode(WorkMode.team);
-    if (context.mounted) {
-      await showPhotoSyncSettingsSheet(
-        context,
-        focusMode: WorkMode.team,
-      );
-    }
+    // TODO: 调试完成后恢复登录/团队校验与同步弹窗逻辑
+    final teamId = auth.activeTeam.value?.id;
+    await context.push(AppPaths.teamWorkspace, extra: teamId);
   }
 
   @override

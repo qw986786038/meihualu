@@ -11,6 +11,8 @@ import 'package:watermark_camera/pages/team/join_team_by_name_page.dart';
 import 'package:watermark_camera/pages/team/join_team_page.dart';
 import 'package:watermark_camera/pages/team/team_brand_picker_page.dart';
 import 'package:watermark_camera/pages/team/team_industry_picker_page.dart';
+import 'package:watermark_camera/pages/team/team_photo_search_page.dart';
+import 'package:watermark_camera/pages/team/team_workspace_page.dart';
 import 'package:watermark_camera/pages/gallery/media_gallery_page.dart';
 import 'package:watermark_camera/pages/gallery/ai_remove_watermark_picker_page.dart';
 import 'package:watermark_camera/pages/gallery/batch_add_watermark_picker_page.dart';
@@ -77,6 +79,22 @@ final GoRouter appRouter = GoRouter(
       name: 'teamBrandPicker',
       builder: (BuildContext context, GoRouterState state) =>
           const TeamBrandPickerPage(),
+    ),
+    GoRoute(
+      path: AppPaths.teamWorkspace,
+      name: 'teamWorkspace',
+      builder: (BuildContext context, GoRouterState state) {
+        final teamId = state.extra is String ? state.extra as String : null;
+        return TeamWorkspacePage(teamId: teamId);
+      },
+    ),
+    GoRoute(
+      path: AppPaths.teamPhotoSearch,
+      name: 'teamPhotoSearch',
+      builder: (BuildContext context, GoRouterState state) {
+        final teamId = state.extra is String ? state.extra as String : null;
+        return TeamPhotoSearchPage(teamId: teamId);
+      },
     ),
     GoRoute(
       path: AppPaths.mediaGallery,

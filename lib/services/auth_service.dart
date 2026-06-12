@@ -1,6 +1,7 @@
 import 'package:getx_plus/getx_plus.dart';
 import 'package:watermark_camera/models/personal_space.dart';
 import 'package:watermark_camera/models/team.dart';
+import 'package:watermark_camera/services/team_workspace_service.dart';
 
 enum WorkMode { personal, team }
 
@@ -17,12 +18,13 @@ class AuthService extends GetxService {
   bool get hasPersonalSpace => personalSpace.value != null;
   bool get hasTeam => teams.isNotEmpty;
 
-  bool get uploadToCloud {
-    if (workMode.value == WorkMode.personal) {
-      return personalSpace.value?.syncEnabled ?? false;
-    }
-    return true;
-  }
+  bool get shouldSyncToPersonal =>
+      isLoggedIn.value && (personalSpace.value?.syncEnabled ?? false);
+
+  bool get shouldSyncToTeam =>
+      isLoggedIn.value &&
+      activeTeam.value != null &&
+      activeTeam.value!.syncEnabled;
 
   Future<bool> fakeLogin({
     required String phoneNumber,
@@ -61,6 +63,17 @@ class AuthService extends GetxService {
     personalSpace.value = space.copyWith(syncEnabled: enabled);
   }
 
+  void setTeamSyncEnabled(bool enabled) {
+    final team = activeTeam.value;
+    if (team == null) return;
+    final updated = team.copyWith(syncEnabled: enabled);
+    activeTeam.value = updated;
+    final index = teams.indexWhere((item) => item.id == team.id);
+    if (index >= 0) {
+      teams[index] = updated;
+    }
+  }
+
   void setWorkMode(WorkMode mode) {
     workMode.value = mode;
   }
@@ -85,6 +98,9 @@ class AuthService extends GetxService {
     teams.add(team);
     activeTeam.value = team;
     workMode.value = WorkMode.team;
+    if (Get.isRegistered<TeamWorkspaceService>()) {
+      Get.find<TeamWorkspaceService>().ensureTeamInitialized(team, this);
+    }
     return true;
   }
 
@@ -125,6 +141,9 @@ class AuthService extends GetxService {
     }
     activeTeam.value = team;
     workMode.value = WorkMode.team;
+    if (Get.isRegistered<TeamWorkspaceService>()) {
+      Get.find<TeamWorkspaceService>().ensureTeamInitialized(team, this);
+    }
     return true;
   }
 
@@ -142,5 +161,8 @@ class AuthService extends GetxService {
     skipLocalSaveAfterSync.value = false;
     teams.clear();
     activeTeam.value = null;
+    if (Get.isRegistered<TeamWorkspaceService>()) {
+      Get.find<TeamWorkspaceService>().clearAll();
+    }
   }
 }

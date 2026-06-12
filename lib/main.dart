@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:watermark_camera/router/app_router.dart';
 import 'package:watermark_camera/services/amap_location_service.dart';
 import 'package:watermark_camera/services/auth_service.dart';
+import 'package:watermark_camera/services/photo_sync_service.dart';
+import 'package:watermark_camera/services/team_workspace_service.dart';
 import 'package:getx_plus/getx_plus.dart';
 
 void main() {
@@ -9,6 +11,8 @@ void main() {
 
   Get.put(AMapLocationService(), permanent: true);
   Get.put(AuthService(), permanent: true);
+  Get.put(PhotoSyncService(), permanent: true);
+  Get.put(TeamWorkspaceService(), permanent: true);
 
   runApp(const WatermarkCameraApp());
 }
