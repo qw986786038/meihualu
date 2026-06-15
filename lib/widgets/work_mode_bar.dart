@@ -3,37 +3,17 @@ import 'package:getx_plus/getx_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:watermark_camera/router/app_paths.dart';
 import 'package:watermark_camera/services/auth_service.dart';
-import 'package:watermark_camera/widgets/photo_sync_settings_sheet.dart';
 
 class WorkModeBar extends StatelessWidget {
   const WorkModeBar({super.key});
 
-  Future<void> _openLogin(
-    BuildContext context, {
-    WorkMode focusMode = WorkMode.personal,
-  }) async {
-    final loggedIn = await context.push<bool>(AppPaths.login);
-    if (loggedIn == true && context.mounted) {
-      Get.find<AuthService>().setWorkMode(focusMode);
-      await showPhotoSyncSettingsSheet(
-        context,
-        focusMode: focusMode,
-      );
-    }
-  }
-
   Future<void> _handlePersonalTap(BuildContext context, AuthService auth) async {
     if (!auth.isLoggedIn.value) {
-      await _openLogin(context, focusMode: WorkMode.personal);
-      return;
+      await context.push<bool>(AppPaths.login);
+      if (!context.mounted) return;
     }
     auth.setWorkMode(WorkMode.personal);
-    if (context.mounted) {
-      await showPhotoSyncSettingsSheet(
-        context,
-        focusMode: WorkMode.personal,
-      );
-    }
+    await context.push(AppPaths.personalSpace);
   }
 
   Future<void> _handleTeamTap(BuildContext context, AuthService auth) async {

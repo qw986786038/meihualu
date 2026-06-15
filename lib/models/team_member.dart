@@ -16,5 +16,5 @@ class TeamMember {
   final TeamMemberRole role;
 
   String get roleLabel =>
-      role == TeamMemberRole.owner ? '管理员' : '成员';
+      role == TeamMemberRole.owner ? '主管理员' : '成员';
 }

@@ -1,6 +1,7 @@
 import 'package:getx_plus/getx_plus.dart';
 import 'package:watermark_camera/models/personal_space.dart';
 import 'package:watermark_camera/models/team.dart';
+import 'package:watermark_camera/services/personal_space_service.dart';
 import 'package:watermark_camera/services/team_workspace_service.dart';
 
 enum WorkMode { personal, team }
@@ -163,6 +164,9 @@ class AuthService extends GetxService {
     activeTeam.value = null;
     if (Get.isRegistered<TeamWorkspaceService>()) {
       Get.find<TeamWorkspaceService>().clearAll();
+    }
+    if (Get.isRegistered<PersonalSpaceService>()) {
+      Get.find<PersonalSpaceService>().clearAll();
     }
   }
 }

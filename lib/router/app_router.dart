@@ -5,14 +5,17 @@ import 'package:watermark_camera/pages/CameraPage.dart';
 import 'package:watermark_camera/pages/HomePage.dart';
 import 'package:watermark_camera/pages/WelcomePage.dart';
 import 'package:watermark_camera/pages/auth/fake_login_page.dart';
+import 'package:watermark_camera/pages/personal/personal_space_page.dart';
 import 'package:watermark_camera/pages/team/create_team_page.dart';
 import 'package:watermark_camera/pages/team/join_team_by_code_page.dart';
 import 'package:watermark_camera/pages/team/join_team_by_name_page.dart';
 import 'package:watermark_camera/pages/team/join_team_page.dart';
 import 'package:watermark_camera/pages/team/team_brand_picker_page.dart';
 import 'package:watermark_camera/pages/team/team_industry_picker_page.dart';
+import 'package:watermark_camera/pages/team/team_invite_members_page.dart';
 import 'package:watermark_camera/pages/team/team_photo_search_page.dart';
 import 'package:watermark_camera/pages/team/team_workspace_page.dart';
+import 'package:watermark_camera/models/team.dart';
 import 'package:watermark_camera/pages/gallery/media_gallery_page.dart';
 import 'package:watermark_camera/pages/gallery/ai_remove_watermark_picker_page.dart';
 import 'package:watermark_camera/pages/gallery/batch_add_watermark_picker_page.dart';
@@ -95,6 +98,20 @@ final GoRouter appRouter = GoRouter(
         final teamId = state.extra is String ? state.extra as String : null;
         return TeamPhotoSearchPage(teamId: teamId);
       },
+    ),
+    GoRoute(
+      path: AppPaths.teamInviteMembers,
+      name: 'teamInviteMembers',
+      builder: (BuildContext context, GoRouterState state) {
+        final team = state.extra is Team ? state.extra as Team : TeamWorkspacePage.debugTeam;
+        return TeamInviteMembersPage(team: team);
+      },
+    ),
+    GoRoute(
+      path: AppPaths.personalSpace,
+      name: 'personalSpace',
+      builder: (BuildContext context, GoRouterState state) =>
+          const PersonalSpacePage(),
     ),
     GoRoute(
       path: AppPaths.mediaGallery,

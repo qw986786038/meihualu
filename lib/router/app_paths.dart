@@ -13,6 +13,8 @@ abstract final class AppPaths {
   static const teamBrandPicker = '/team/brand';
   static const teamWorkspace = '/team/workspace';
   static const teamPhotoSearch = '/team/photo-search';
+  static const teamInviteMembers = '/team/invite-members';
+  static const personalSpace = '/personal/space';
   static const mediaGallery = '/gallery/media';
   static const mediaMultiSelect = '/gallery/multi-select';
   static const aiRemoveWatermark = '/gallery/ai-remove-watermark';

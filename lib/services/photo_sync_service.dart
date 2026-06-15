@@ -1,5 +1,6 @@
 import 'package:getx_plus/getx_plus.dart';
 import 'package:watermark_camera/services/auth_service.dart';
+import 'package:watermark_camera/services/personal_space_service.dart';
 import 'package:watermark_camera/services/team_workspace_service.dart';
 
 class PhotoSyncResult {
@@ -37,6 +38,20 @@ class PhotoSyncService extends GetxService {
         Get.find<TeamWorkspaceService>().ensureTeamInitialized(team, _auth);
         Get.find<TeamWorkspaceService>().addTeamPhoto(
           teamId: team.id,
+          filePath: filePath,
+          capturedAt: DateTime.now(),
+          location: location,
+          isVideo: isVideo,
+        );
+      }
+    }
+
+    if (uploadPersonal && Get.isRegistered<PersonalSpaceService>()) {
+      final space = _auth.personalSpace.value;
+      if (space != null) {
+        Get.find<PersonalSpaceService>().ensureSpaceInitialized(space);
+        Get.find<PersonalSpaceService>().addPhoto(
+          personalSpaceId: space.id,
           filePath: filePath,
           capturedAt: DateTime.now(),
           location: location,
