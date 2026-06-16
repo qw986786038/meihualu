@@ -50,6 +50,7 @@ dependencies:
   go_router: ^17.2.3
   fl_amap: 3.5.0
   http: ^1.4.0
+  crypto: ^3.0.6
   native_exif: ^0.8.0
 
 dev_dependencies:

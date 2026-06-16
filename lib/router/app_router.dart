@@ -22,6 +22,7 @@ import 'package:watermark_camera/pages/gallery/batch_add_watermark_picker_page.d
 import 'package:watermark_camera/pages/gallery/batch_add_watermark_preview_page.dart';
 import 'package:watermark_camera/pages/gallery/batch_remove_watermark_picker_page.dart';
 import 'package:watermark_camera/pages/gallery/batch_remove_watermark_preview_page.dart';
+import 'package:watermark_camera/pages/camera/image_tagging_picker_page.dart';
 import 'package:watermark_camera/pages/gallery/edit_watermark_picker_page.dart';
 import 'package:watermark_camera/pages/gallery/media_multi_select_page.dart';
 
@@ -39,6 +40,12 @@ final GoRouter appRouter = GoRouter(
     GoRoute(path: AppPaths.welcome, name: 'welcome', builder: (BuildContext context, GoRouterState state) => const WelcomePage()),
     GoRoute(path: AppPaths.home, name: 'home', builder: (BuildContext context, GoRouterState state) => const HomePage()),
     GoRoute(path: AppPaths.camera, name: 'camera', builder: (BuildContext context, GoRouterState state) => const CameraPage()),
+    GoRoute(
+      path: AppPaths.imageTagging,
+      name: 'imageTagging',
+      builder: (BuildContext context, GoRouterState state) =>
+          const ImageTaggingPickerPage(),
+    ),
     GoRoute(
       path: AppPaths.login,
       name: 'login',

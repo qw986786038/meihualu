@@ -31,7 +31,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
-/coverage/
+lib/config/aliyun_secrets.dart
 
 # Symbolication related
 app.*.symbols

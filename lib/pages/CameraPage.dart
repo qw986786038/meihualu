@@ -6,7 +6,9 @@ import 'package:getx_plus/getx_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:watermark_camera/pages/camera/camera_map_controller.dart';
+import 'package:watermark_camera/pages/camera/image_tagging_flow.dart';
 import 'package:watermark_camera/router/app_paths.dart';
+import 'package:watermark_camera/services/aliyun_image_tagging_service.dart';
 import 'package:watermark_camera/services/amap_location_service.dart';
 import 'package:watermark_camera/widgets/camera_bottom_bar.dart';
 import 'package:watermark_camera/widgets/camera_map_overlay.dart';
@@ -35,8 +37,11 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   WaterMarkController waterMarkController = Get.put(WaterMarkController());
   final CameraMapController cameraMapController = Get.put(CameraMapController());
   final AMapLocationService locationService = Get.find<AMapLocationService>();
+  final AliyunImageTaggingService taggingService =
+      Get.find<AliyunImageTaggingService>();
 
   bool _didAddDefaultWatermark = false;
+  bool _isTaggingRecognizing = false;
 
   void _ensureDefaultWatermarkAfterPreview(Size size) {
     if (_didAddDefaultWatermark) return;
@@ -67,6 +72,46 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
         );
       },
     );
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _openImageTagging() async {
+    final action = await context.push<String?>(AppPaths.imageTagging);
+    if (!mounted || action != kImageTaggingCaptureAction) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: const Text('请对准目标后拍照识别'),
+          duration: const Duration(seconds: 8),
+          action: SnackBarAction(
+            label: '立即识别',
+            onPressed: () => unawaited(_runCaptureTagging()),
+          ),
+        ),
+      );
+  }
+
+  Future<void> _runCaptureTagging() async {
+    if (_isTaggingRecognizing) return;
+    setState(() => _isTaggingRecognizing = true);
+    try {
+      await captureAndRecognizeFromCamera(
+        context: context,
+        cameraController: cameraController,
+        taggingService: taggingService,
+        onError: _showSnack,
+      );
+    } finally {
+      if (mounted) setState(() => _isTaggingRecognizing = false);
+    }
   }
 
   @override
@@ -240,11 +285,34 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                     label: '照片编辑',
                     onTap: () => context.push(AppPaths.mediaGallery),
                   ),
+                  CameraBottomBarItem(
+                    icon: Icons.document_scanner_outlined,
+                    label: '图像识别',
+                    onTap: () => unawaited(_openImageTagging()),
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
             ],
           ),
+          if (_isTaggingRecognizing)
+            Container(
+              color: Colors.black.withValues(alpha: 0.35),
+              alignment: Alignment.center,
+              child: const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 12),
+                      Text('正在识别...'),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

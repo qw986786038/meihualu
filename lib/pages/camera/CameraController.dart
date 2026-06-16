@@ -101,6 +101,21 @@ class CameraController extends GetxController {
     );
   }
 
+  /// 拍照并返回原始图片字节，用于图像识别（会同步触发常规拍照保存流程）。
+  Future<Uint8List?> capturePhotoBytesForTagging() async {
+    if (camera.operationMode == CameraxOperationMode.video) return null;
+    if (camera.isTakingPicture || camera.isRecording) return null;
+
+    final file = await camera.takePicture();
+    if (file == null) return null;
+
+    try {
+      return await File(file.path).readAsBytes();
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> refreshLatestPhotoPreview() async {
     final latest = await getLatestPhoto();
     if (latest == null) {
