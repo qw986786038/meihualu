@@ -116,7 +116,11 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
 
   Future<void> _openWorkModeSwitchSheet() async {
     final team = _team;
-    await showWorkModeSwitchSheet(context, currentTeam: team);
+    await showWorkModeSwitchSheet(
+      context,
+      currentTeam: team,
+      currentWorkspace: WorkspaceContext.team,
+    );
   }
 
   @override

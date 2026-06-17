@@ -49,7 +49,6 @@ class PhotoSyncService extends GetxService {
     if (uploadPersonal && Get.isRegistered<PersonalSpaceService>()) {
       final space = _auth.personalSpace.value;
       if (space != null) {
-        Get.find<PersonalSpaceService>().ensureSpaceInitialized(space);
         Get.find<PersonalSpaceService>().addPhoto(
           personalSpaceId: space.id,
           filePath: filePath,

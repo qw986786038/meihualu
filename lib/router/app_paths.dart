@@ -15,11 +15,14 @@ abstract final class AppPaths {
   static const teamPhotoSearch = '/team/photo-search';
   static const teamInviteMembers = '/team/invite-members';
   static const personalSpace = '/personal/space';
+  static const personalSpaceUpload = '/personal/upload';
+  static const personalSpaceBatch = '/personal/batch';
   static const mediaGallery = '/gallery/media';
   static const mediaMultiSelect = '/gallery/multi-select';
   static const aiRemoveWatermark = '/gallery/ai-remove-watermark';
   static const editWatermark = '/gallery/edit-watermark';
   static const imageTagging = '/camera/image-tagging';
+  static const screenTextOcr = '/camera/screen-text-ocr';
   static const batchAddWatermark = '/gallery/batch-add-watermark';
   static const batchAddWatermarkPreview = '/gallery/batch-add-watermark/preview';
   static const batchRemoveWatermark = '/gallery/batch-remove-watermark';

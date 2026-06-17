@@ -10,42 +10,58 @@ import 'package:watermark_camera/services/auth_service.dart';
 import 'package:watermark_camera/services/personal_space_service.dart';
 import 'package:watermark_camera/services/team_workspace_service.dart';
 
+enum WorkspaceContext { camera, personal, team }
+
 Future<void> showWorkModeSwitchSheet(
   BuildContext context, {
   Team? currentTeam,
+  required WorkspaceContext currentWorkspace,
 }) {
-  return showGeneralDialog<void>(
-    context: context,
-    barrierDismissible: true,
-    barrierLabel: '关闭',
-    barrierColor: Colors.black54,
-    transitionDuration: const Duration(milliseconds: 250),
-    pageBuilder: (context, animation, secondaryAnimation) {
-      return Align(
-        alignment: Alignment.topCenter,
-        child: Material(
-          color: Colors.white,
-          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-          clipBehavior: Clip.antiAlias,
-          child: WorkModeSwitchSheet(currentTeam: currentTeam),
-        ),
-      );
-    },
-    transitionBuilder: (context, animation, secondaryAnimation, child) {
-      return SlideTransition(
-        position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero).animate(
-          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-        ),
-        child: child,
-      );
-    },
-  );
+  final hostContext = context;
+  return Future<void>.delayed(Duration.zero, () async {
+    if (!hostContext.mounted) return;
+    await showGeneralDialog<void>(
+      context: hostContext,
+      useRootNavigator: false,
+      barrierDismissible: true,
+      barrierLabel: '关闭',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return Align(
+          alignment: Alignment.topCenter,
+          child: Material(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+            clipBehavior: Clip.antiAlias,
+            child: WorkModeSwitchSheet(
+              currentTeam: currentTeam,
+              currentWorkspace: currentWorkspace,
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          ),
+          child: child,
+        );
+      },
+    );
+  });
 }
 
 class WorkModeSwitchSheet extends StatelessWidget {
-  const WorkModeSwitchSheet({super.key, this.currentTeam});
+  const WorkModeSwitchSheet({
+    super.key,
+    this.currentTeam,
+    required this.currentWorkspace,
+  });
 
   final Team? currentTeam;
+  final WorkspaceContext currentWorkspace;
 
   AuthService get _auth => Get.find<AuthService>();
   TeamWorkspaceService get _workspace => Get.find<TeamWorkspaceService>();
@@ -58,7 +74,7 @@ class WorkModeSwitchSheet extends StatelessWidget {
   }
 
   void _close(BuildContext context) {
-    Navigator.pop(context);
+    Navigator.of(context, rootNavigator: false).pop();
   }
 
   Future<void> _openCreateTeam(BuildContext context) async {
@@ -77,23 +93,39 @@ class WorkModeSwitchSheet extends StatelessWidget {
     _workspace.ensureTeamInitialized(team, _auth);
     _close(context);
 
-    final currentPath = GoRouterState.of(context).uri.path;
+    final router = GoRouter.of(context);
+    final currentPath = router.state.uri.path;
     final isSameTeamWorkspace =
+        currentWorkspace == WorkspaceContext.team &&
         currentPath == AppPaths.teamWorkspace &&
         (_auth.activeTeam.value?.id ?? team.id) == team.id;
     if (isSameTeamWorkspace) return;
 
-    context.push(AppPaths.teamWorkspace, extra: team.id);
+    if (currentPath == AppPaths.camera) {
+      router.push(AppPaths.teamWorkspace, extra: team.id);
+      return;
+    }
+
+    router.pushReplacement(AppPaths.teamWorkspace, extra: team.id);
   }
 
   void _selectPersonal(BuildContext context) {
     _auth.setWorkMode(WorkMode.personal);
     _close(context);
 
-    final currentPath = GoRouterState.of(context).uri.path;
-    if (currentPath == AppPaths.personalSpace) return;
+    final router = GoRouter.of(context);
+    final currentPath = router.state.uri.path;
+    if (currentWorkspace == WorkspaceContext.personal &&
+        currentPath == AppPaths.personalSpace) {
+      return;
+    }
 
-    context.push(AppPaths.personalSpace);
+    if (currentPath == AppPaths.camera) {
+      router.push(AppPaths.personalSpace);
+      return;
+    }
+
+    router.pushReplacement(AppPaths.personalSpace);
   }
 
   String _teamSubtitle(Team team) {
@@ -124,18 +156,30 @@ class WorkModeSwitchSheet extends StatelessWidget {
   }
 
   bool _isTeamSelected(Team team) {
-    if (_isPersonalSelected) return false;
+    if (currentWorkspace == WorkspaceContext.personal) return false;
+    if (currentWorkspace == WorkspaceContext.camera &&
+        _auth.workMode.value != WorkMode.team) {
+      return false;
+    }
     final activeId = _auth.activeTeam.value?.id ?? currentTeam?.id;
     return activeId == team.id;
   }
 
-  bool get _isPersonalSelected => _auth.workMode.value == WorkMode.personal;
+  bool get _isPersonalSelected {
+    if (currentWorkspace == WorkspaceContext.personal) return true;
+    if (currentWorkspace == WorkspaceContext.camera) {
+      return _auth.workMode.value == WorkMode.personal;
+    }
+    return false;
+  }
 
   int _personalPhotoCount() {
     final space = _personalSpace;
     if (space == null) return 0;
-    _personalService.ensureSpaceInitialized(space);
-    return _personalService.photosForSpace(space.id).length;
+    return _personalService
+        .photosForSpace(space.id)
+        .where((photo) => photo.filePath.isNotEmpty)
+        .length;
   }
 
   @override

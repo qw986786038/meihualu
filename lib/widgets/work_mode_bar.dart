@@ -1,24 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:watermark_camera/router/app_paths.dart';
 import 'package:watermark_camera/services/auth_service.dart';
+import 'package:watermark_camera/widgets/photo_sync_settings_sheet.dart';
 
 class WorkModeBar extends StatelessWidget {
   const WorkModeBar({super.key});
 
+  Future<void> _openLoginThenSyncSheet(
+    BuildContext context, {
+    WorkMode focusMode = WorkMode.personal,
+  }) async {
+    final loggedIn = await context.push<bool>(AppPaths.login);
+    if (loggedIn != true || !context.mounted) return;
+
+    Get.find<AuthService>().setWorkMode(focusMode);
+
+    // 等登录页 pop 完成后再弹 bottom sheet，避免弹窗被吞掉
+    await Future<void>.delayed(const Duration(milliseconds: 320));
+    if (!context.mounted) return;
+
+    await showPhotoSyncSettingsSheet(context, focusMode: focusMode);
+  }
+
+  Future<void> _showSyncSheet(BuildContext context) async {
+    Get.find<AuthService>().setWorkMode(WorkMode.personal);
+
+    await SchedulerBinding.instance.endOfFrame;
+    if (!context.mounted) return;
+
+    await showPhotoSyncSettingsSheet(
+      context,
+      focusMode: WorkMode.personal,
+    );
+  }
+
   Future<void> _handlePersonalTap(BuildContext context, AuthService auth) async {
     if (!auth.isLoggedIn.value) {
-      await context.push<bool>(AppPaths.login);
-      if (!context.mounted) return;
+      await _openLoginThenSyncSheet(context, focusMode: WorkMode.personal);
+      return;
     }
-    auth.setWorkMode(WorkMode.personal);
-    await context.push(AppPaths.personalSpace);
+    await _showSyncSheet(context);
   }
 
   Future<void> _handleTeamTap(BuildContext context, AuthService auth) async {
     auth.setWorkMode(WorkMode.team);
-    // TODO: 调试完成后恢复登录/团队校验与同步弹窗逻辑
     final teamId = auth.activeTeam.value?.id;
     await context.push(AppPaths.teamWorkspace, extra: teamId);
   }

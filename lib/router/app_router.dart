@@ -6,6 +6,8 @@ import 'package:watermark_camera/pages/HomePage.dart';
 import 'package:watermark_camera/pages/WelcomePage.dart';
 import 'package:watermark_camera/pages/auth/fake_login_page.dart';
 import 'package:watermark_camera/pages/personal/personal_space_page.dart';
+import 'package:watermark_camera/pages/personal/personal_space_upload_controller.dart';
+import 'package:watermark_camera/pages/personal/personal_space_upload_picker_page.dart';
 import 'package:watermark_camera/pages/team/create_team_page.dart';
 import 'package:watermark_camera/pages/team/join_team_by_code_page.dart';
 import 'package:watermark_camera/pages/team/join_team_by_name_page.dart';
@@ -23,6 +25,7 @@ import 'package:watermark_camera/pages/gallery/batch_add_watermark_preview_page.
 import 'package:watermark_camera/pages/gallery/batch_remove_watermark_picker_page.dart';
 import 'package:watermark_camera/pages/gallery/batch_remove_watermark_preview_page.dart';
 import 'package:watermark_camera/pages/camera/image_tagging_picker_page.dart';
+import 'package:watermark_camera/pages/camera/screen_text_ocr_picker_page.dart';
 import 'package:watermark_camera/pages/gallery/edit_watermark_picker_page.dart';
 import 'package:watermark_camera/pages/gallery/media_multi_select_page.dart';
 
@@ -45,6 +48,12 @@ final GoRouter appRouter = GoRouter(
       name: 'imageTagging',
       builder: (BuildContext context, GoRouterState state) =>
           const ImageTaggingPickerPage(),
+    ),
+    GoRoute(
+      path: AppPaths.screenTextOcr,
+      name: 'screenTextOcr',
+      builder: (BuildContext context, GoRouterState state) =>
+          const ScreenTextOcrPickerPage(),
     ),
     GoRoute(
       path: AppPaths.login,
@@ -119,6 +128,22 @@ final GoRouter appRouter = GoRouter(
       name: 'personalSpace',
       builder: (BuildContext context, GoRouterState state) =>
           const PersonalSpacePage(),
+    ),
+    GoRoute(
+      path: AppPaths.personalSpaceUpload,
+      name: 'personalSpaceUpload',
+      builder: (BuildContext context, GoRouterState state) =>
+          const PersonalSpaceUploadPickerPage(
+            mode: PersonalSpacePickerMode.upload,
+          ),
+    ),
+    GoRoute(
+      path: AppPaths.personalSpaceBatch,
+      name: 'personalSpaceBatch',
+      builder: (BuildContext context, GoRouterState state) =>
+          const PersonalSpaceUploadPickerPage(
+            mode: PersonalSpacePickerMode.batch,
+          ),
     ),
     GoRoute(
       path: AppPaths.mediaGallery,

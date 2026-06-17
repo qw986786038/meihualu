@@ -7,8 +7,10 @@ import 'package:go_router/go_router.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:watermark_camera/pages/camera/camera_map_controller.dart';
 import 'package:watermark_camera/pages/camera/image_tagging_flow.dart';
+import 'package:watermark_camera/pages/camera/screen_text_recognition_flow.dart';
 import 'package:watermark_camera/router/app_paths.dart';
 import 'package:watermark_camera/services/aliyun_image_tagging_service.dart';
+import 'package:watermark_camera/services/aliyun_ocr_service.dart';
 import 'package:watermark_camera/services/amap_location_service.dart';
 import 'package:watermark_camera/widgets/camera_bottom_bar.dart';
 import 'package:watermark_camera/widgets/camera_map_overlay.dart';
@@ -39,9 +41,11 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   final AMapLocationService locationService = Get.find<AMapLocationService>();
   final AliyunImageTaggingService taggingService =
       Get.find<AliyunImageTaggingService>();
+  final AliyunOcrService ocrService = Get.find<AliyunOcrService>();
 
   bool _didAddDefaultWatermark = false;
   bool _isTaggingRecognizing = false;
+  bool _isScreenTextRecognizing = false;
 
   void _ensureDefaultWatermarkAfterPreview(Size size) {
     if (_didAddDefaultWatermark) return;
@@ -111,6 +115,39 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
       );
     } finally {
       if (mounted) setState(() => _isTaggingRecognizing = false);
+    }
+  }
+
+  Future<void> _openScreenTextOcr() async {
+    final action = await context.push<String?>(AppPaths.screenTextOcr);
+    if (!mounted || action != kScreenTextCaptureAction) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: const Text('请对准 LED 广告屏后拍照识别'),
+          duration: const Duration(seconds: 8),
+          action: SnackBarAction(
+            label: '立即识别',
+            onPressed: () => unawaited(_runCaptureScreenText()),
+          ),
+        ),
+      );
+  }
+
+  Future<void> _runCaptureScreenText() async {
+    if (_isScreenTextRecognizing) return;
+    setState(() => _isScreenTextRecognizing = true);
+    try {
+      await captureAndRecognizeScreenText(
+        context: context,
+        cameraController: cameraController,
+        ocrService: ocrService,
+        onError: _showSnack,
+      );
+    } finally {
+      if (mounted) setState(() => _isScreenTextRecognizing = false);
     }
   }
 
@@ -290,24 +327,33 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                     label: '图像识别',
                     onTap: () => unawaited(_openImageTagging()),
                   ),
+                  CameraBottomBarItem(
+                    icon: Icons.text_fields_outlined,
+                    label: '屏幕文字识别',
+                    onTap: () => unawaited(_openScreenTextOcr()),
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
             ],
           ),
-          if (_isTaggingRecognizing)
+          if (_isTaggingRecognizing || _isScreenTextRecognizing)
             Container(
               color: Colors.black.withValues(alpha: 0.35),
               alignment: Alignment.center,
-              child: const Card(
+              child: Card(
                 child: Padding(
-                  padding: EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 12),
-                      Text('正在识别...'),
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 12),
+                      Text(
+                        _isScreenTextRecognizing
+                            ? '正在识别屏幕文字...'
+                            : '正在识别...',
+                      ),
                     ],
                   ),
                 ),

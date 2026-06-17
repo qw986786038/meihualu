@@ -13,42 +13,6 @@ class PersonalSpaceService extends GetxService {
       ..sort((a, b) => b.capturedAt.compareTo(a.capturedAt));
   }
 
-  void ensureSpaceInitialized(PersonalSpace space) {
-    if (photos.any((photo) => photo.personalSpaceId == space.id)) return;
-
-    final baseDate = DateTime(2026, 6, 12, 14, 16);
-    photos.addAll([
-      PersonalAlbumPhoto(
-        id: 'personal_photo_1',
-        personalSpaceId: space.id,
-        filePath: '',
-        capturedAt: baseDate,
-        location: '广东省深圳市南山区',
-      ),
-      PersonalAlbumPhoto(
-        id: 'personal_photo_2',
-        personalSpaceId: space.id,
-        filePath: '',
-        capturedAt: baseDate.add(const Duration(minutes: 1)),
-        location: '广东省深圳市南山区',
-      ),
-      PersonalAlbumPhoto(
-        id: 'personal_photo_3',
-        personalSpaceId: space.id,
-        filePath: '',
-        capturedAt: baseDate.add(const Duration(minutes: 2)),
-        location: '广东省深圳市南山区',
-      ),
-      PersonalAlbumPhoto(
-        id: 'personal_photo_4',
-        personalSpaceId: space.id,
-        filePath: '',
-        capturedAt: baseDate.add(const Duration(minutes: 3)),
-        location: '广东省深圳市南山区',
-      ),
-    ]);
-  }
-
   void addPhoto({
     required String personalSpaceId,
     required String filePath,

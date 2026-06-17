@@ -5,6 +5,7 @@ import 'package:getx_plus/getx_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:watermark_camera/models/personal_album_photo.dart';
 import 'package:watermark_camera/models/personal_space.dart';
+import 'package:watermark_camera/router/app_paths.dart';
 import 'package:watermark_camera/services/auth_service.dart';
 import 'package:watermark_camera/services/personal_space_service.dart';
 import 'package:watermark_camera/widgets/work_mode_switch_sheet.dart';
@@ -33,7 +34,6 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
   @override
   void initState() {
     super.initState();
-    _personalService.ensureSpaceInitialized(_space);
     _auth.setWorkMode(WorkMode.personal);
   }
 
@@ -47,6 +47,7 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
     await showWorkModeSwitchSheet(
       context,
       currentTeam: _auth.activeTeam.value,
+      currentWorkspace: WorkspaceContext.personal,
     );
   }
 
@@ -54,6 +55,7 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
     await showWorkModeSwitchSheet(
       context,
       currentTeam: _auth.activeTeam.value,
+      currentWorkspace: WorkspaceContext.personal,
     );
   }
 
@@ -89,7 +91,9 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
             Expanded(
               child: Obx(() {
                 final photos = _personalService.photosForSpace(_space.id);
-                final groupedPhotos = _groupPhotosByDay(photos);
+                final syncedPhotos =
+                    photos.where((photo) => photo.filePath.isNotEmpty).toList();
+                final groupedPhotos = _groupPhotosByDay(syncedPhotos);
                 final sortedDays = groupedPhotos.keys.toList()
                   ..sort((a, b) => b.compareTo(a));
 
@@ -98,14 +102,15 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
                     SliverToBoxAdapter(child: _buildSearchBar()),
                     SliverToBoxAdapter(child: _buildQuickActions()),
                     SliverToBoxAdapter(child: _buildStatsRow()),
-                    SliverToBoxAdapter(child: _buildGalleryHeader(photos.length)),
-                    if (photos.isEmpty)
+                    SliverToBoxAdapter(child: _buildGalleryHeader(syncedPhotos.length)),
+                    if (syncedPhotos.isEmpty)
                       SliverFillRemaining(
                         hasScrollBody: false,
                         child: Center(
                           child: Text(
-                            '暂无照片',
-                            style: TextStyle(color: Colors.grey.shade500),
+                            '暂无照片\n开启拍照自动同步后，拍摄的照片会显示在这里',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey.shade500, height: 1.5),
                           ),
                         ),
                       )
@@ -214,6 +219,14 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
     );
   }
 
+  Future<void> _openUploadPicker() async {
+    await context.push<bool>(AppPaths.personalSpaceUpload);
+  }
+
+  Future<void> _openBatchPicker() async {
+    await context.push<bool>(AppPaths.personalSpaceBatch);
+  }
+
   Widget _buildQuickActions() {
     const actions = [
       _QuickAction(icon: Icons.file_upload_outlined, label: '上传照片'),
@@ -230,7 +243,11 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
               (action) => Expanded(
                 child: _QuickActionTile(
                   action: action,
-                  onTap: () => _showComingSoon(action.label),
+                  onTap: switch (action.label) {
+                    '上传照片' => _openUploadPicker,
+                    '批量操作' => _openBatchPicker,
+                    _ => () => _showComingSoon(action.label),
+                  },
                 ),
               ),
             )

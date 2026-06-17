@@ -189,40 +189,53 @@ class PhotoSyncSettingsSheet extends StatelessWidget {
                             const SizedBox(height: 10),
                             Row(
                               children: [
-                                _AvatarBadge(text: space.avatarText),
-                                const SizedBox(width: 10),
                                 Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Flexible(
-                                            child: Text(
-                                              space.name,
-                                              style: const TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w600,
+                                  child: InkWell(
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      context.push(AppPaths.personalSpace);
+                                    },
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Row(
+                                      children: [
+                                        _AvatarBadge(text: space.avatarText),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Flexible(
+                                                    child: Text(
+                                                      space.name,
+                                                      style: const TextStyle(
+                                                        fontSize: 16,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Icon(
+                                                    Icons.chevron_right,
+                                                    size: 20,
+                                                    color: Colors.grey.shade500,
+                                                  ),
+                                                ],
                                               ),
-                                            ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                '仅自己可见',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey.shade500,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          Icon(
-                                            Icons.chevron_right,
-                                            size: 20,
-                                            color: Colors.grey.shade500,
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '仅自己可见',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey.shade500,
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                                 Switch.adaptive(
