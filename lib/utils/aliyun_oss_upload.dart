@@ -39,11 +39,13 @@ Future<AliyunOssUploadResult> uploadToViapiTempOss({
   final objectName = '$ownerAccessKeyId/$nonce/$fileName';
   final host = '$bucket.$region.aliyuncs.com';
   final date = _httpDate();
+  const objectAcl = 'public-read';
   final authorization = _buildAuthorization(
     accessKeySecret: credentials.accessKeySecret,
     method: 'PUT',
     contentType: contentType,
     date: date,
+    objectAcl: objectAcl,
     securityToken: credentials.securityToken,
     bucket: bucket,
     objectName: objectName,
@@ -55,6 +57,7 @@ Future<AliyunOssUploadResult> uploadToViapiTempOss({
     headers: <String, String>{
       'Date': date,
       'Content-Type': contentType,
+      'x-oss-object-acl': objectAcl,
       'x-oss-security-token': credentials.securityToken,
       'Authorization': 'OSS ${credentials.accessKeyId}:$authorization',
     },
@@ -79,11 +82,13 @@ String _buildAuthorization({
   required String method,
   required String contentType,
   required String date,
+  required String objectAcl,
   required String securityToken,
   required String bucket,
   required String objectName,
 }) {
   final canonicalizedOssHeaders =
+      'x-oss-object-acl:$objectAcl\n'
       'x-oss-security-token:$securityToken\n';
   final canonicalizedResource = '/$bucket/$objectName';
   final stringToSign = '$method\n\n$contentType\n$date\n'

@@ -194,7 +194,7 @@ class AliyunOcrService extends GetxService {
     final uri = Uri.https(endpoint, '/');
     final response = await http.post(uri, body: params);
     if (response.statusCode != 200) {
-      throw AliyunOcrException('请求失败 (${response.statusCode})');
+      throw AliyunOcrException(_readRpcErrorMessage(response));
     }
 
     final body = jsonDecode(response.body);
@@ -214,5 +214,18 @@ class AliyunOcrService extends GetxService {
   double _readConfidence(Object? value) {
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  String _readRpcErrorMessage(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+      if (body is Map) {
+        final message = body['Message']?.toString();
+        if (message != null && message.isNotEmpty) {
+          return message;
+        }
+      }
+    } catch (_) {}
+    return '请求失败 (${response.statusCode})';
   }
 }

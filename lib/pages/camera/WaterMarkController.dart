@@ -6,6 +6,8 @@ import '../../widgets/WaterMark/watermark_template_view.dart';
 import '../../widgets/stack_board.dart';
 
 class WaterMarkController extends GetxController {
+  static const double _cameraWatermarkBottomInset = 210;
+
   final StackBoardController controller = StackBoardController();
   final RxString selectedTemplateId = kDefaultWatermarkTemplateId.obs;
 
@@ -38,17 +40,52 @@ class WaterMarkController extends GetxController {
   void addWaterMark() {
     final existing = _findWaterMarkItem();
     if (existing != null) {
+      _ensureMinimumBottomClearance(_cameraWatermarkBottomInset);
       selectTemplate(selectedTemplateId.value);
       return;
     }
     _addTemplate(
       waterMarkTemplate,
       placement: StackBoardPlacement.bottomLeft,
-      placementMargin: const EdgeInsets.only(left: 4, bottom: 72),
+      placementMargin: const EdgeInsets.only(
+        left: 4,
+        bottom: _cameraWatermarkBottomInset,
+      ),
       allowOverlap: false,
       draggable: true,
     );
     selectTemplate(selectedTemplateId.value);
+  }
+
+  void _ensureMinimumBottomClearance(double minBottom) {
+    final boardHeight = controller.boardSize.height;
+    if (boardHeight <= 0) return;
+
+    final items = controller.items.toList(growable: true);
+    final index = items.indexWhere(
+      (item) => item.template.templateId == waterMarkTemplate.templateId,
+    );
+    if (index < 0) return;
+
+    final item = items[index];
+    final clearance = boardHeight - item.rect.bottom;
+    if (clearance >= minBottom) return;
+    // 仅在水印落入底部控件遮挡区时自动上移，避免覆盖用户手动调整的位置。
+    if (clearance >= 150) return;
+
+    final nextTop = (item.rect.top - (minBottom - clearance)).clamp(
+      0.0,
+      double.infinity,
+    );
+    items[index] = item.copyWith(
+      rect: Rect.fromLTWH(
+        item.rect.left,
+        nextTop,
+        item.rect.width,
+        item.rect.height,
+      ),
+    );
+    controller.replaceItems(items);
   }
 
   void removeSelected() {
