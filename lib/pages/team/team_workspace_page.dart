@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:watermark_camera/models/team.dart';
@@ -129,13 +130,11 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6F8),
-      floatingActionButton: _bottomNavIndex <= 2
-          ? FloatingActionButton(
-              onPressed: () => context.push(AppPaths.camera),
-              backgroundColor: _headerBlue,
-              child: const Icon(Icons.photo_camera_outlined, color: Colors.white),
-            )
-          : null,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.push(AppPaths.camera),
+        backgroundColor: _headerBlue,
+        child: const Icon(Icons.photo_camera_outlined, color: Colors.white),
+      ),
       body: IndexedStack(
         index: _bottomNavIndex,
         children: [
@@ -161,7 +160,10 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
             onSearchPhotosTap: _openPhotoSearch,
             onComingSoon: _showComingSoon,
           ),
-          _PlaceholderTab(title: '管理'),
+          _TeamManageTab(
+            team: team,
+            onComingSoon: _showComingSoon,
+          ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -1493,18 +1495,487 @@ class _WorkbenchFeatureTile extends StatelessWidget {
   }
 }
 
-class _PlaceholderTab extends StatelessWidget {
-  const _PlaceholderTab({required this.title});
+class _TeamManageTab extends StatefulWidget {
+  const _TeamManageTab({
+    required this.team,
+    required this.onComingSoon,
+  });
 
-  final String title;
+  final Team team;
+  final void Function(String feature) onComingSoon;
+
+  @override
+  State<_TeamManageTab> createState() => _TeamManageTabState();
+}
+
+class _TeamManageTabState extends State<_TeamManageTab> {
+  bool _photoResyncNotify = false;
+
+  Team get _team => widget.team;
+
+  Future<void> _copyTeamCode() async {
+    await Clipboard.setData(ClipboardData(text: _team.teamCode));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('团队号已复制')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        '$title功能开发中，敬请期待',
-        style: TextStyle(color: Colors.grey.shade600),
+    return ColoredBox(
+      color: const Color(0xFFF5F6F8),
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 88),
+        children: [
+          _ManageTeamHeader(
+            team: _team,
+            onCopyTeamCode: _copyTeamCode,
+            onComingSoon: widget.onComingSoon,
+          ),
+          _ManageVipSection(onComingSoon: widget.onComingSoon),
+          const SizedBox(height: 12),
+          _ManageSettingsCard(
+            items: [
+              _ManageSettingItem(
+                title: '团队存储空间',
+                onTap: () => widget.onComingSoon('团队存储空间'),
+              ),
+              _ManageSettingItem(
+                title: '团队水印',
+                subtitle: '一人创建 团队共用',
+                onTap: () => widget.onComingSoon('团队水印'),
+              ),
+              _ManageSettingItem(
+                title: '照片设置',
+                subtitle: '同步高清原图',
+                onTap: () => widget.onComingSoon('照片设置'),
+              ),
+              _ManageSettingItem(
+                title: '同步限制',
+                subtitle: '全员已开启照片同步',
+                onTap: () => widget.onComingSoon('同步限制'),
+                showDivider: false,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _ManageSettingsCard(
+            items: [
+              _ManageSettingItem(
+                title: '权限和人员管理',
+                onTap: () => widget.onComingSoon('权限和人员管理'),
+              ),
+              _ManageSettingItem(
+                title: '团队主题样式',
+                onTap: () => widget.onComingSoon('团队主题样式'),
+              ),
+              _ManageSettingItem(
+                title: '照片重新同步打扰',
+                trailing: Switch.adaptive(
+                  value: _photoResyncNotify,
+                  activeTrackColor: const Color(0xFF34C759),
+                  onChanged: (value) => setState(() => _photoResyncNotify = value),
+                ),
+                showChevron: false,
+                showDivider: false,
+              ),
+            ],
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class _ManageTeamHeader extends StatelessWidget {
+  const _ManageTeamHeader({
+    required this.team,
+    required this.onCopyTeamCode,
+    required this.onComingSoon,
+  });
+
+  final Team team;
+  final VoidCallback onCopyTeamCode;
+  final void Function(String feature) onComingSoon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 12, 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ManageTeamBrand(team: team),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      team.name,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111111),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 4,
+                      children: [
+                        Text(
+                          '团队号: ${team.teamCode}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: onCopyTeamCode,
+                          child: const Text(
+                            '复制',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF1677FF),
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => onComingSoon('抢靓号'),
+                          child: const Text(
+                            '抢靓号',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF1677FF),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              InkWell(
+                onTap: () => onComingSoon('团队二维码'),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.qr_code_2, size: 22, color: Colors.grey.shade700),
+                      Icon(Icons.chevron_right, size: 20, color: Colors.grey.shade400),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ManageTeamBrand extends StatelessWidget {
+  const _ManageTeamBrand({required this.team});
+
+  final Team team;
+
+  @override
+  Widget build(BuildContext context) {
+    final brandPath = team.brandImagePath;
+    if (brandPath != null && brandPath.isNotEmpty) {
+      final file = File(brandPath);
+      if (file.existsSync()) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.file(
+            file,
+            width: 56,
+            height: 56,
+            fit: BoxFit.cover,
+          ),
+        );
+      }
+    }
+
+    return Container(
+      width: 56,
+      height: 56,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Text(
+        team.name.isNotEmpty ? team.name.substring(0, 1) : '团',
+        style: const TextStyle(
+          color: Color(0xFF1677FF),
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _ManageVipSection extends StatelessWidget {
+  const _ManageVipSection({required this.onComingSoon});
+
+  final void Function(String feature) onComingSoon;
+
+  @override
+  Widget build(BuildContext context) {
+    const features = <({IconData icon, String label})>[
+      (icon: Icons.cloud_outlined, label: '永久存储'),
+      (icon: Icons.photo_library_outlined, label: '无限查看'),
+      (icon: Icons.download_outlined, label: '批量下载'),
+      (icon: Icons.table_chart_outlined, label: '台账表导出'),
+      (icon: Icons.branding_watermark_outlined, label: '去水印'),
+    ];
+
+    return Container(
+      color: const Color(0xFFFFF3E8),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '开通会员立享手机/电脑30+权益',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade800,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => onComingSoon('开通会员'),
+                style: TextButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFB020),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text('去开通', style: TextStyle(fontSize: 13)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              for (var i = 0; i < features.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(
+                  child: _ManageVipFeature(
+                    icon: features[i].icon,
+                    label: features[i].label,
+                    onTap: () => onComingSoon(features[i].label),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFE4C4),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.workspace_premium,
+                  size: 16,
+                  color: Color(0xFFE8A317),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '开通高级会员，畅享团队拼图模版',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ManageVipFeature extends StatelessWidget {
+  const _ManageVipFeature({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Column(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 22, color: const Color(0xFFFF8C1A)),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ManageSettingItem {
+  const _ManageSettingItem({
+    required this.title,
+    this.subtitle,
+    this.onTap,
+    this.trailing,
+    this.showChevron = true,
+    this.showDivider = true,
+  });
+
+  final String title;
+  final String? subtitle;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+  final bool showChevron;
+  final bool showDivider;
+}
+
+class _ManageSettingsCard extends StatelessWidget {
+  const _ManageSettingsCard({required this.items});
+
+  final List<_ManageSettingItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < items.length; i++)
+            _ManageSettingTile(
+              item: items[i],
+              showDivider: items[i].showDivider && i < items.length - 1,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ManageSettingTile extends StatelessWidget {
+  const _ManageSettingTile({
+    required this.item,
+    required this.showDivider,
+  });
+
+  final _ManageSettingItem item;
+  final bool showDivider;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF111111),
+                  ),
+                ),
+                if (item.subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    item.subtitle!,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (item.trailing != null)
+            item.trailing!
+          else if (item.showChevron)
+            Icon(Icons.chevron_right, color: Colors.grey.shade400),
+        ],
+      ),
+    );
+
+    return Column(
+      children: [
+        if (item.onTap != null)
+          InkWell(onTap: item.onTap, child: content)
+        else
+          content,
+        if (showDivider)
+          Divider(
+            height: 1,
+            thickness: 1,
+            indent: 16,
+            endIndent: 16,
+            color: Colors.grey.shade200,
+          ),
+      ],
     );
   }
 }

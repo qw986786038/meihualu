@@ -23,6 +23,7 @@ abstract final class AppPaths {
   static const editWatermark = '/gallery/edit-watermark';
   static const imageTagging = '/camera/image-tagging';
   static const screenTextOcr = '/camera/screen-text-ocr';
+  static const syncSettings = '/settings/sync';
   static const batchAddWatermark = '/gallery/batch-add-watermark';
   static const batchAddWatermarkPreview = '/gallery/batch-add-watermark/preview';
   static const batchRemoveWatermark = '/gallery/batch-remove-watermark';

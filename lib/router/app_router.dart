@@ -26,6 +26,7 @@ import 'package:watermark_camera/pages/gallery/batch_remove_watermark_picker_pag
 import 'package:watermark_camera/pages/gallery/batch_remove_watermark_preview_page.dart';
 import 'package:watermark_camera/pages/camera/image_tagging_picker_page.dart';
 import 'package:watermark_camera/pages/camera/screen_text_ocr_picker_page.dart';
+import 'package:watermark_camera/pages/settings/sync_settings_page.dart';
 import 'package:watermark_camera/pages/gallery/edit_watermark_picker_page.dart';
 import 'package:watermark_camera/pages/gallery/media_multi_select_page.dart';
 
@@ -54,6 +55,12 @@ final GoRouter appRouter = GoRouter(
       name: 'screenTextOcr',
       builder: (BuildContext context, GoRouterState state) =>
           const ScreenTextOcrPickerPage(),
+    ),
+    GoRoute(
+      path: AppPaths.syncSettings,
+      name: 'syncSettings',
+      builder: (BuildContext context, GoRouterState state) =>
+          const SyncSettingsPage(),
     ),
     GoRoute(
       path: AppPaths.login,

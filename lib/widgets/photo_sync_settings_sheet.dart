@@ -57,8 +57,10 @@ class PhotoSyncSettingsSheet extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _SheetHeader(
-                  onSettingsTap: () =>
-                      _showComingSoon(context, '同步设置'),
+                  onSettingsTap: () {
+                    Navigator.pop(context);
+                    context.push(AppPaths.syncSettings);
+                  },
                 ),
                 const SizedBox(height: 12),
                 Obx(() {

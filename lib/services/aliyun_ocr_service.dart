@@ -134,23 +134,26 @@ class AliyunOcrService extends GetxService {
       businessParams: <String, String>{'Url': imageUrl},
     );
 
-    final data = body['Data'];
-    if (data is! Map) {
+    final data = _parseOcrData(body['Data']);
+    if (data == null) {
       throw AliyunOcrException('识别结果为空');
     }
 
-    final content = data['Content']?.toString().trim() ?? '';
+    final content = _readOcrField(data, 'Content', 'content')?.trim() ?? '';
     final words = <OcrWordResult>[];
-    final prismWords = data['PrismWordsInfo'];
+    final prismWords = data['PrismWordsInfo'] ?? data['prism_wordsInfo'];
     if (prismWords is List) {
       for (final raw in prismWords) {
         if (raw is! Map) continue;
-        final word = raw['Word']?.toString().trim() ?? '';
+        final word =
+            _readOcrField(raw, 'Word', 'word')?.trim() ?? '';
         if (word.isEmpty) continue;
         words.add(
           OcrWordResult(
             word: word,
-            confidence: _readConfidence(raw['Prob'] ?? raw['Confidence']),
+            confidence: _readConfidence(
+              raw['Prob'] ?? raw['prob'] ?? raw['Confidence'] ?? raw['confidence'],
+            ),
           ),
         );
       }
@@ -209,6 +212,28 @@ class AliyunOcrService extends GetxService {
     }
 
     return Map<String, dynamic>.from(body);
+  }
+
+  /// 阿里云 OCR 的 Data 字段是 JSON 字符串，需二次解析。
+  Map<String, dynamic>? _parseOcrData(Object? raw) {
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+    if (raw is String && raw.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          return Map<String, dynamic>.from(decoded);
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  String? _readOcrField(Map map, String pascalKey, String camelKey) {
+    final value = map[pascalKey] ?? map[camelKey];
+    if (value == null) return null;
+    return value.toString();
   }
 
   double _readConfidence(Object? value) {
