@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:watermark_camera/models/team.dart';
 import 'package:watermark_camera/models/team_album_photo.dart';
 import 'package:watermark_camera/models/team_member.dart';
+import 'package:watermark_camera/pages/team/team_member_profile_page.dart';
 import 'package:watermark_camera/router/app_paths.dart';
 import 'package:watermark_camera/services/auth_service.dart';
 import 'package:watermark_camera/services/team_workspace_service.dart';
@@ -115,6 +116,21 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
     await context.push(AppPaths.teamInviteMembers, extra: team);
   }
 
+  Future<void> _openDepartmentManagement() async {
+    final team = _team;
+    if (team == null) return;
+    await context.push(AppPaths.teamDepartmentManagement, extra: team);
+  }
+
+  Future<void> _openMemberProfile(TeamMember member) async {
+    final team = _team;
+    if (team == null) return;
+    await context.push(
+      AppPaths.teamMemberProfile,
+      extra: TeamMemberProfileArgs(team: team, member: member),
+    );
+  }
+
   Future<void> _openWorkModeSwitchSheet() async {
     final team = _team;
     await showWorkModeSwitchSheet(
@@ -154,6 +170,8 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
           _TeamMembersTab(
             team: team,
             onInviteMembersTap: _openInviteMembers,
+            onDepartmentManagementTap: _openDepartmentManagement,
+            onMemberTap: _openMemberProfile,
             onComingSoon: _showComingSoon,
           ),
           _TeamWorkbenchTab(
@@ -712,11 +730,15 @@ class _TeamMembersTab extends StatefulWidget {
   const _TeamMembersTab({
     required this.team,
     required this.onInviteMembersTap,
+    required this.onDepartmentManagementTap,
+    required this.onMemberTap,
     required this.onComingSoon,
   });
 
   final Team team;
   final VoidCallback onInviteMembersTap;
+  final VoidCallback onDepartmentManagementTap;
+  final void Function(TeamMember member) onMemberTap;
   final void Function(String feature) onComingSoon;
 
   @override
@@ -837,7 +859,7 @@ class _TeamMembersTabState extends State<_TeamMembersTab> {
                     ),
                     title: '部门管理',
                     trailingText: '分组管理团队',
-                    onTap: () => widget.onComingSoon('部门管理'),
+                    onTap: widget.onDepartmentManagementTap,
                   ),
                   Divider(height: 8, thickness: 8, color: Colors.grey.shade100),
                   if (members.isEmpty)
@@ -854,11 +876,7 @@ class _TeamMembersTabState extends State<_TeamMembersTab> {
                     ...members.map(
                       (member) => _MemberListTile(
                         member: member,
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('成员详情功能开发中，敬请期待')),
-                          );
-                        },
+                        onTap: () => widget.onMemberTap(member),
                       ),
                     ),
                 ],

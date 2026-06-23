@@ -14,10 +14,13 @@ import 'package:watermark_camera/pages/team/join_team_by_name_page.dart';
 import 'package:watermark_camera/pages/team/join_team_page.dart';
 import 'package:watermark_camera/pages/team/team_brand_picker_page.dart';
 import 'package:watermark_camera/pages/team/team_industry_picker_page.dart';
+import 'package:watermark_camera/pages/team/team_department_management_page.dart';
 import 'package:watermark_camera/pages/team/team_invite_members_page.dart';
+import 'package:watermark_camera/pages/team/team_member_profile_page.dart';
 import 'package:watermark_camera/pages/team/team_photo_search_page.dart';
 import 'package:watermark_camera/pages/team/team_workspace_page.dart';
 import 'package:watermark_camera/models/team.dart';
+import 'package:watermark_camera/models/team_member.dart';
 import 'package:watermark_camera/pages/gallery/media_gallery_page.dart';
 import 'package:watermark_camera/pages/gallery/ai_remove_watermark_picker_page.dart';
 import 'package:watermark_camera/pages/gallery/batch_add_watermark_picker_page.dart';
@@ -128,6 +131,33 @@ final GoRouter appRouter = GoRouter(
       builder: (BuildContext context, GoRouterState state) {
         final team = state.extra is Team ? state.extra as Team : TeamWorkspacePage.debugTeam;
         return TeamInviteMembersPage(team: team);
+      },
+    ),
+    GoRoute(
+      path: AppPaths.teamDepartmentManagement,
+      name: 'teamDepartmentManagement',
+      builder: (BuildContext context, GoRouterState state) {
+        final team = state.extra is Team ? state.extra as Team : TeamWorkspacePage.debugTeam;
+        return TeamDepartmentManagementPage(team: team);
+      },
+    ),
+    GoRoute(
+      path: AppPaths.teamMemberProfile,
+      name: 'teamMemberProfile',
+      builder: (BuildContext context, GoRouterState state) {
+        if (state.extra is TeamMemberProfileArgs) {
+          final args = state.extra as TeamMemberProfileArgs;
+          return TeamMemberProfilePage(team: args.team, member: args.member);
+        }
+        return TeamMemberProfilePage(
+          team: TeamWorkspacePage.debugTeam,
+          member: TeamMember(
+            id: 'unknown',
+            name: '成员',
+            avatarText: '成',
+            isSelf: false,
+          ),
+        );
       },
     ),
     GoRoute(
