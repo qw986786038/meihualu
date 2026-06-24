@@ -79,6 +79,26 @@ class AuthService extends GetxService {
     workMode.value = mode;
   }
 
+  void updateTeam(Team team) {
+    final index = teams.indexWhere((item) => item.id == team.id);
+    if (index >= 0) {
+      teams[index] = team;
+    }
+    if (activeTeam.value?.id == team.id) {
+      activeTeam.value = team;
+    }
+  }
+
+  void leaveTeam(String teamId) {
+    teams.removeWhere((item) => item.id == teamId);
+    if (activeTeam.value?.id == teamId) {
+      activeTeam.value = teams.isNotEmpty ? teams.first : null;
+      if (activeTeam.value == null) {
+        workMode.value = WorkMode.personal;
+      }
+    }
+  }
+
   Future<bool> createTeam({
     required String name,
     required String industryType,

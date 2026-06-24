@@ -15,6 +15,7 @@ import 'package:watermark_camera/pages/team/join_team_page.dart';
 import 'package:watermark_camera/pages/team/team_brand_picker_page.dart';
 import 'package:watermark_camera/pages/team/team_industry_picker_page.dart';
 import 'package:watermark_camera/pages/team/team_department_management_page.dart';
+import 'package:watermark_camera/pages/team/team_info_page.dart';
 import 'package:watermark_camera/pages/team/team_invite_members_page.dart';
 import 'package:watermark_camera/pages/team/team_member_profile_page.dart';
 import 'package:watermark_camera/pages/team/team_photo_search_page.dart';
@@ -139,6 +140,14 @@ final GoRouter appRouter = GoRouter(
       builder: (BuildContext context, GoRouterState state) {
         final team = state.extra is Team ? state.extra as Team : TeamWorkspacePage.debugTeam;
         return TeamDepartmentManagementPage(team: team);
+      },
+    ),
+    GoRoute(
+      path: AppPaths.teamInfo,
+      name: 'teamInfo',
+      builder: (BuildContext context, GoRouterState state) {
+        final team = state.extra is Team ? state.extra as Team : TeamWorkspacePage.debugTeam;
+        return TeamInfoPage(team: team);
       },
     ),
     GoRoute(

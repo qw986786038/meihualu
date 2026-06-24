@@ -122,6 +122,12 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
     await context.push(AppPaths.teamDepartmentManagement, extra: team);
   }
 
+  Future<void> _openTeamInfo() async {
+    final team = _team;
+    if (team == null) return;
+    await context.push(AppPaths.teamInfo, extra: team);
+  }
+
   Future<void> _openMemberProfile(TeamMember member) async {
     final team = _team;
     if (team == null) return;
@@ -180,6 +186,7 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
           ),
           _TeamManageTab(
             team: team,
+            onTeamInfoTap: _openTeamInfo,
             onComingSoon: _showComingSoon,
           ),
         ],
@@ -1516,10 +1523,12 @@ class _WorkbenchFeatureTile extends StatelessWidget {
 class _TeamManageTab extends StatefulWidget {
   const _TeamManageTab({
     required this.team,
+    required this.onTeamInfoTap,
     required this.onComingSoon,
   });
 
   final Team team;
+  final Future<void> Function() onTeamInfoTap;
   final void Function(String feature) onComingSoon;
 
   @override
@@ -1549,6 +1558,7 @@ class _TeamManageTabState extends State<_TeamManageTab> {
           _ManageTeamHeader(
             team: _team,
             onCopyTeamCode: _copyTeamCode,
+            onTeamInfoTap: widget.onTeamInfoTap,
             onComingSoon: widget.onComingSoon,
           ),
           _ManageVipSection(onComingSoon: widget.onComingSoon),
@@ -1610,90 +1620,95 @@ class _ManageTeamHeader extends StatelessWidget {
   const _ManageTeamHeader({
     required this.team,
     required this.onCopyTeamCode,
+    required this.onTeamInfoTap,
     required this.onComingSoon,
   });
 
   final Team team;
   final VoidCallback onCopyTeamCode;
+  final Future<void> Function() onTeamInfoTap;
   final void Function(String feature) onComingSoon;
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 12, 16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _ManageTeamBrand(team: team),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      team.name,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF111111),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 4,
-                      children: [
-                        Text(
-                          '团队号: ${team.teamCode}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: onCopyTeamCode,
-                          child: const Text(
-                            '复制',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF1677FF),
-                            ),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => onComingSoon('抢靓号'),
-                          child: const Text(
-                            '抢靓号',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF1677FF),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              InkWell(
-                onTap: () => onComingSoon('团队二维码'),
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+      child: InkWell(
+        onTap: onTeamInfoTap,
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 12, 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _ManageTeamBrand(team: team),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.qr_code_2, size: 22, color: Colors.grey.shade700),
-                      Icon(Icons.chevron_right, size: 20, color: Colors.grey.shade400),
+                      Text(
+                        team.name,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111111),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 4,
+                        children: [
+                          Text(
+                            '团队号: ${team.teamCode}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: onCopyTeamCode,
+                            child: const Text(
+                              '复制',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF1677FF),
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => onComingSoon('抢靓号'),
+                            child: const Text(
+                              '抢靓号',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF1677FF),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
-              ),
-            ],
+                InkWell(
+                  onTap: onTeamInfoTap,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.qr_code_2, size: 22, color: Colors.grey.shade700),
+                        Icon(Icons.chevron_right, size: 20, color: Colors.grey.shade400),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

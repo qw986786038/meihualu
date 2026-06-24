@@ -15,6 +15,7 @@ abstract final class AppPaths {
   static const teamPhotoSearch = '/team/photo-search';
   static const teamInviteMembers = '/team/invite-members';
   static const teamDepartmentManagement = '/team/department-management';
+  static const teamInfo = '/team/info';
   static const teamMemberProfile = '/team/member-profile';
   static const personalSpace = '/personal/space';
   static const personalSpaceUpload = '/personal/upload';
