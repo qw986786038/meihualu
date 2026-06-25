@@ -17,8 +17,10 @@ import 'package:watermark_camera/pages/team/team_industry_picker_page.dart';
 import 'package:watermark_camera/pages/team/team_department_management_page.dart';
 import 'package:watermark_camera/pages/team/team_info_page.dart';
 import 'package:watermark_camera/pages/team/team_invite_members_page.dart';
+import 'package:watermark_camera/pages/team/team_qr_invite_page.dart';
 import 'package:watermark_camera/pages/team/team_member_profile_page.dart';
 import 'package:watermark_camera/pages/team/team_photo_search_page.dart';
+import 'package:watermark_camera/pages/team/team_photo_ledger_page.dart';
 import 'package:watermark_camera/pages/team/team_workspace_page.dart';
 import 'package:watermark_camera/models/team.dart';
 import 'package:watermark_camera/models/team_member.dart';
@@ -127,11 +129,27 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: AppPaths.teamPhotoLedger,
+      name: 'teamPhotoLedger',
+      builder: (BuildContext context, GoRouterState state) {
+        final team = state.extra is Team ? state.extra as Team : TeamWorkspacePage.debugTeam;
+        return TeamPhotoLedgerPage(team: team);
+      },
+    ),
+    GoRoute(
       path: AppPaths.teamInviteMembers,
       name: 'teamInviteMembers',
       builder: (BuildContext context, GoRouterState state) {
         final team = state.extra is Team ? state.extra as Team : TeamWorkspacePage.debugTeam;
         return TeamInviteMembersPage(team: team);
+      },
+    ),
+    GoRoute(
+      path: AppPaths.teamQrInvite,
+      name: 'teamQrInvite',
+      builder: (BuildContext context, GoRouterState state) {
+        final team = state.extra is Team ? state.extra as Team : TeamWorkspacePage.debugTeam;
+        return TeamQrInvitePage(team: team);
       },
     ),
     GoRoute(

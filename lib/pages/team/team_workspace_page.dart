@@ -146,6 +146,23 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
     );
   }
 
+  void _viewRecentPhotos() {
+    final team = _team;
+    if (team == null) return;
+    final photos = _workspace.photosForTeam(team.id);
+    if (photos.isEmpty) {
+      _showComingSoon('暂无最近照片');
+      return;
+    }
+    setState(() => _selectedDate = photos.first.capturedAt);
+  }
+
+  Future<void> _openPhotoLedger() async {
+    final team = _team;
+    if (team == null) return;
+    await context.push(AppPaths.teamPhotoLedger, extra: team);
+  }
+
   @override
   Widget build(BuildContext context) {
     final team = _team!;
@@ -170,6 +187,8 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
             onMemberFilterTap: _openMemberFilter,
             onSearchPhotosTap: _openPhotoSearch,
             onInviteMembersTap: _openInviteMembers,
+            onViewRecentPhotosTap: _viewRecentPhotos,
+            onPhotoLedgerTap: _openPhotoLedger,
             onSwitchModeTap: _openWorkModeSwitchSheet,
             onComingSoon: _showComingSoon,
           ),
@@ -241,6 +260,8 @@ class _WorkCircleTab extends StatelessWidget {
     required this.onMemberFilterTap,
     required this.onSearchPhotosTap,
     required this.onInviteMembersTap,
+    required this.onViewRecentPhotosTap,
+    required this.onPhotoLedgerTap,
     required this.onSwitchModeTap,
     required this.onComingSoon,
   });
@@ -254,6 +275,8 @@ class _WorkCircleTab extends StatelessWidget {
   final VoidCallback onMemberFilterTap;
   final VoidCallback onSearchPhotosTap;
   final VoidCallback onInviteMembersTap;
+  final VoidCallback onViewRecentPhotosTap;
+  final VoidCallback onPhotoLedgerTap;
   final VoidCallback onSwitchModeTap;
   final void Function(String feature) onComingSoon;
 
@@ -273,6 +296,7 @@ class _WorkCircleTab extends StatelessWidget {
           onInviteMembersTap: onInviteMembersTap,
           onSwitchModeTap: onSwitchModeTap,
           onComingSoon: onComingSoon,
+          onPhotoLedgerTap: onPhotoLedgerTap,
         ),
         Expanded(
           child: ColoredBox(
@@ -299,12 +323,16 @@ class _WorkCircleTab extends StatelessWidget {
                         groupByMember: false,
                         selectedDate: selectedDate,
                         selectedMemberIds: selectedMemberIds,
+                        onInviteMembersTap: onInviteMembersTap,
+                        onViewRecentPhotosTap: onViewRecentPhotosTap,
                       ),
                       _TeamFeedList(
                         team: team,
                         groupByMember: true,
                         selectedDate: selectedDate,
                         selectedMemberIds: selectedMemberIds,
+                        onInviteMembersTap: onInviteMembersTap,
+                        onViewRecentPhotosTap: onViewRecentPhotosTap,
                       ),
                     ],
                   ),
@@ -337,6 +365,7 @@ class _TeamHeader extends StatelessWidget {
     required this.onInviteMembersTap,
     required this.onSwitchModeTap,
     required this.onComingSoon,
+    required this.onPhotoLedgerTap,
   });
 
   final Team team;
@@ -347,6 +376,7 @@ class _TeamHeader extends StatelessWidget {
   final VoidCallback onInviteMembersTap;
   final VoidCallback onSwitchModeTap;
   final void Function(String feature) onComingSoon;
+  final VoidCallback onPhotoLedgerTap;
 
   @override
   Widget build(BuildContext context) {
@@ -426,7 +456,226 @@ class _TeamHeader extends StatelessWidget {
                 ],
               ),
             ),
+            _WorkCircleStatsRow(team: team),
+            _WorkCircleQuickActions(
+              onComingSoon: onComingSoon,
+              onPhotoLedgerTap: onPhotoLedgerTap,
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WorkCircleStatsRow extends StatelessWidget {
+  const _WorkCircleStatsRow({required this.team});
+
+  final Team team;
+
+  TeamWorkspaceService get _workspace => Get.find<TeamWorkspaceService>();
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final photos = _workspace.photosForTeam(team.id);
+      final members = _workspace.membersForTeam(team.id);
+      final syncedCount = photos.where((photo) => photo.filePath.isNotEmpty).length;
+      final totalCount = photos.length;
+      final now = DateTime.now();
+      final attendedToday = photos
+          .where((photo) => _isSameDay(photo.capturedAt, now))
+          .map((photo) => photo.memberId)
+          .toSet()
+          .length;
+      final totalMembers = members.isEmpty ? 1 : members.length;
+
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: _WorkCircleStatCard(
+                primaryText: '已同步 $syncedCount 张',
+                secondaryText: '全部照片 $totalCount 张',
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _WorkCircleStatCard(
+                primaryText: '$attendedToday / $totalMembers 人',
+                secondaryText: '考勤统计',
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: _WorkCircleStatCard(
+                primaryText: '0 个',
+                secondaryText: '分类相册',
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+}
+
+class _WorkCircleStatCard extends StatelessWidget {
+  const _WorkCircleStatCard({
+    required this.primaryText,
+    required this.secondaryText,
+  });
+
+  final String primaryText;
+  final String secondaryText;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            primaryText,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF111111),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            secondaryText,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WorkCircleQuickActions extends StatelessWidget {
+  const _WorkCircleQuickActions({
+    required this.onComingSoon,
+    required this.onPhotoLedgerTap,
+  });
+
+  final void Function(String feature) onComingSoon;
+  final VoidCallback onPhotoLedgerTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 36,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        children: [
+          _WorkCircleQuickActionChip(
+            label: '照片台账',
+            icon: Icons.table_chart,
+            iconColor: const Color(0xFF34C759),
+            onTap: onPhotoLedgerTap,
+          ),
+          const SizedBox(width: 8),
+          _WorkCircleQuickActionChip(
+            label: '团队水印',
+            icon: Icons.verified_outlined,
+            iconColor: const Color(0xFF1677FF),
+            onTap: () => onComingSoon('团队水印'),
+          ),
+          const SizedBox(width: 8),
+          _WorkCircleQuickActionChip(
+            label: '上传照片',
+            onTap: () => onComingSoon('上传照片'),
+          ),
+          const SizedBox(width: 8),
+          _WorkCircleQuickActionChip(
+            label: '通知',
+            badgeCount: 1,
+            onTap: () => onComingSoon('通知'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WorkCircleQuickActionChip extends StatelessWidget {
+  const _WorkCircleQuickActionChip({
+    required this.label,
+    required this.onTap,
+    this.icon,
+    this.iconColor,
+    this.badgeCount,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final Color? iconColor;
+  final int? badgeCount;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget content = Text(
+      label,
+      style: const TextStyle(
+        fontSize: 13,
+        color: Color(0xFF333333),
+      ),
+    );
+
+    if (badgeCount != null && badgeCount! > 0) {
+      content = Badge(
+        label: Text(
+          '$badgeCount',
+          style: const TextStyle(fontSize: 10),
+        ),
+        backgroundColor: const Color(0xFFE64545),
+        offset: const Offset(10, -6),
+        child: Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: content,
+        ),
+      );
+    }
+
+    return Material(
+      color: Colors.white.withValues(alpha: 0.95),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 16, color: iconColor),
+                const SizedBox(width: 4),
+              ],
+              content,
+            ],
+          ),
         ),
       ),
     );
@@ -502,12 +751,16 @@ class _TeamFeedList extends StatelessWidget {
     required this.groupByMember,
     required this.selectedDate,
     required this.selectedMemberIds,
+    required this.onInviteMembersTap,
+    required this.onViewRecentPhotosTap,
   });
 
   final Team team;
   final bool groupByMember;
   final DateTime selectedDate;
   final Set<String> selectedMemberIds;
+  final VoidCallback onInviteMembersTap;
+  final VoidCallback onViewRecentPhotosTap;
 
   TeamWorkspaceService get _workspace => Get.find<TeamWorkspaceService>();
 
@@ -521,12 +774,9 @@ class _TeamFeedList extends StatelessWidget {
             selectedMemberIds.isEmpty ? null : selectedMemberIds,
       );
       if (items.isEmpty) {
-        return Center(
-          child: Text(
-            '该日期暂无团队照片\n开启团队同步后，拍照会自动上传到这里',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey.shade500, height: 1.5),
-          ),
+        return _WorkCircleEmptyState(
+          onInviteTap: onInviteMembersTap,
+          onViewRecentTap: onViewRecentPhotosTap,
         );
       }
 
@@ -556,6 +806,107 @@ class _TeamFeedList extends StatelessWidget {
         },
       );
     });
+  }
+}
+
+class _WorkCircleEmptyState extends StatelessWidget {
+  const _WorkCircleEmptyState({
+    required this.onInviteTap,
+    required this.onViewRecentTap,
+  });
+
+  final VoidCallback onInviteTap;
+  final VoidCallback onViewRecentTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 120,
+              height: 100,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Icon(
+                    Icons.photo_camera_outlined,
+                    size: 72,
+                    color: Colors.grey.shade300,
+                  ),
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1677FF),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        '今日',
+                        style: TextStyle(color: Colors.white, fontSize: 10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '当日暂无照片',
+              style: TextStyle(
+                fontSize: 15,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onInviteTap,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF1677FF),
+                      side: const BorderSide(color: Color(0xFF1677FF)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      '邀请同事加入',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: onViewRecentTap,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF1677FF),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      '查看最近的照片',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

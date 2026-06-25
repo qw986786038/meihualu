@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:watermark_camera/models/team.dart';
+import 'package:watermark_camera/router/app_paths.dart';
 
 class TeamInviteMembersPage extends StatefulWidget {
   const TeamInviteMembersPage({super.key, required this.team});
@@ -104,7 +106,7 @@ class _TeamInviteMembersPageState extends State<TeamInviteMembersPage> {
               child: const Icon(Icons.qr_code_2, color: Colors.white, size: 22),
             ),
             title: '二维码邀请',
-            onTap: () => _showComingSoon('二维码邀请'),
+            onTap: () => context.push(AppPaths.teamQrInvite, extra: _team),
           ),
           _divider(),
           _InviteMethodTile(

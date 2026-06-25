@@ -52,6 +52,7 @@ dependencies:
   http: ^1.4.0
   crypto: ^3.0.6
   native_exif: ^0.8.0
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:
