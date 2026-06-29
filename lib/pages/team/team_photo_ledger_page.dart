@@ -6,6 +6,8 @@ import 'package:watermark_camera/models/team.dart';
 import 'package:watermark_camera/models/team_album_photo.dart';
 import 'package:watermark_camera/models/team_member.dart';
 import 'package:watermark_camera/services/team_workspace_service.dart';
+import 'package:watermark_camera/widgets/team_date_range_filter_sheet.dart';
+import 'package:watermark_camera/widgets/team_watermark_filter_sheet.dart';
 import 'package:watermark_camera/widgets/team_member_filter_sheet.dart';
 
 class TeamPhotoLedgerPage extends StatefulWidget {
@@ -26,6 +28,7 @@ class _TeamPhotoLedgerPageState extends State<TeamPhotoLedgerPage>
   late DateTime _rangeStart;
   late DateTime _rangeEnd;
   Set<String> _selectedMemberIds = {};
+  Set<String> _selectedWatermarkIds = {};
 
   Team get _team => widget.team;
   TeamWorkspaceService get _workspace => Get.find<TeamWorkspaceService>();
@@ -67,6 +70,19 @@ class _TeamPhotoLedgerPageState extends State<TeamPhotoLedgerPage>
     return !day.isBefore(start) && !day.isAfter(end);
   }
 
+  Future<void> _openDateFilter() async {
+    final result = await showTeamDateRangeFilterSheet(
+      context,
+      initialStart: _rangeStart,
+      initialEnd: _rangeEnd,
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      _rangeStart = result.start;
+      _rangeEnd = result.end;
+    });
+  }
+
   Future<void> _openMemberFilter() async {
     final result = await showTeamMemberFilterSheet(
       context,
@@ -77,6 +93,26 @@ class _TeamPhotoLedgerPageState extends State<TeamPhotoLedgerPage>
     setState(() => _selectedMemberIds = result.memberIds);
   }
 
+  Future<void> _openWatermarkFilter() async {
+    final result = await showTeamWatermarkFilterSheet(
+      context,
+      initialSelectedWatermarkIds: _selectedWatermarkIds,
+    );
+    if (result == null || !mounted) return;
+    setState(() => _selectedWatermarkIds = result.watermarkIds);
+  }
+
+  bool _photoMatchesWatermarkFilter(TeamAlbumPhoto photo) {
+    if (_selectedWatermarkIds.isEmpty) return true;
+    final templateId = photo.watermarkTemplateId;
+    for (final id in _selectedWatermarkIds) {
+      if (id == kNoWatermarkFilterId && templateId == null) return true;
+      if (id == templateId) return true;
+      if (id.startsWith('team_') && id.substring(5) == templateId) return true;
+    }
+    return false;
+  }
+
   List<TeamAlbumPhoto> _filteredPhotos() {
     var photos = _workspace.photosForTeam(_team.id);
     photos = photos.where((photo) => _isInRange(photo.capturedAt)).toList();
@@ -84,6 +120,9 @@ class _TeamPhotoLedgerPageState extends State<TeamPhotoLedgerPage>
       photos = photos
           .where((photo) => _selectedMemberIds.contains(photo.memberId))
           .toList();
+    }
+    if (_selectedWatermarkIds.isNotEmpty) {
+      photos = photos.where(_photoMatchesWatermarkFilter).toList();
     }
     return photos;
   }
@@ -179,7 +218,7 @@ class _TeamPhotoLedgerPageState extends State<TeamPhotoLedgerPage>
                         Expanded(
                           child: _FilterChip(
                             label: _rangeLabel,
-                            onTap: () => _showComingSoon('日期筛选'),
+                            onTap: _openDateFilter,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -194,8 +233,10 @@ class _TeamPhotoLedgerPageState extends State<TeamPhotoLedgerPage>
                         const SizedBox(width: 8),
                         Expanded(
                           child: _FilterChip(
-                            label: '筛选水印',
-                            onTap: () => _showComingSoon('筛选水印'),
+                            label: _selectedWatermarkIds.isEmpty
+                                ? '筛选水印'
+                                : '已选${_selectedWatermarkIds.length}个',
+                            onTap: _openWatermarkFilter,
                           ),
                         ),
                       ],
@@ -316,6 +357,10 @@ class _PhotoDetailTab extends StatelessWidget {
       final photos = photosBuilder();
       final memberCount =
           photos.map((photo) => photo.memberId).toSet().length;
+      final watermarkCount = photos
+          .map((photo) => photo.watermarkTemplateId ?? kNoWatermarkFilterId)
+          .toSet()
+          .length;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -347,9 +392,9 @@ class _PhotoDetailTab extends StatelessWidget {
                     ),
                   ),
                   const TextSpan(text: '张，使用'),
-                  const TextSpan(
-                    text: '0',
-                    style: TextStyle(
+                  TextSpan(
+                    text: '$watermarkCount',
+                    style: const TextStyle(
                       color: Color(0xFF1677FF),
                       fontWeight: FontWeight.w600,
                     ),

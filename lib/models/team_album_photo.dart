@@ -7,6 +7,7 @@ class TeamAlbumPhoto {
     required this.capturedAt,
     this.location,
     this.isVideo = false,
+    this.watermarkTemplateId,
   });
 
   final String id;
@@ -16,4 +17,5 @@ class TeamAlbumPhoto {
   final DateTime capturedAt;
   final String? location;
   final bool isVideo;
+  final String? watermarkTemplateId;
 }

@@ -49,7 +49,6 @@ class _TeamMemberFilterSheetState extends State<TeamMemberFilterSheet> {
 
   final _searchController = TextEditingController();
   late Set<String> _selectedMemberIds;
-  bool _showDeptBanner = true;
   String _keyword = '';
 
   TeamWorkspaceService get _workspace => Get.find<TeamWorkspaceService>();
@@ -101,24 +100,23 @@ class _TeamMemberFilterSheetState extends State<TeamMemberFilterSheet> {
   }
 
   String _roleLabel(TeamMember member) {
-    if (member.role == TeamMemberRole.owner) return '主管理员';
+    if (member.role == TeamMemberRole.owner) return member.roleLabel;
     return '';
   }
 
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.88;
+    final sheetHeight = MediaQuery.sizeOf(context).height * 0.62;
     final members = _filteredMembers;
 
     return SafeArea(
       top: false,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxHeight),
+      child: SizedBox(
+        height: sheetHeight,
         child: Padding(
           padding: EdgeInsets.only(bottom: bottomInset),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
@@ -142,62 +140,6 @@ class _TeamMemberFilterSheetState extends State<TeamMemberFilterSheet> {
                   ],
                 ),
               ),
-              if (_showDeptBanner) ...[
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEAF4FF),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => setState(() => _showDeptBanner = false),
-                          child: Icon(
-                            Icons.close,
-                            size: 16,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '想要按部门筛选成员？',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                        ),
-                        OutlinedButton(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('部门管理功能开发中，敬请期待')),
-                            );
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: _primaryBlue,
-                            side: const BorderSide(color: _primaryBlue),
-                            minimumSize: const Size(0, 32),
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text(
-                            '试试部门管理',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
               const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -225,7 +167,7 @@ class _TeamMemberFilterSheetState extends State<TeamMemberFilterSheet> {
                 ),
               ),
               const SizedBox(height: 8),
-              Flexible(
+              Expanded(
                 child: members.isEmpty
                     ? Center(
                         child: Text(
@@ -234,7 +176,6 @@ class _TeamMemberFilterSheetState extends State<TeamMemberFilterSheet> {
                         ),
                       )
                     : ListView.separated(
-                        shrinkWrap: true,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: members.length,
                         separatorBuilder: (_, _) => Divider(
@@ -292,23 +233,36 @@ class _TeamMemberFilterSheetState extends State<TeamMemberFilterSheet> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 child: Row(
                   children: [
-                    TextButton.icon(
-                      onPressed:
+                    InkWell(
+                      onTap:
                           _selectedMemberIds.isEmpty ? null : _clearSelection,
-                      icon: Icon(
-                        Icons.refresh,
-                        size: 18,
-                        color: _selectedMemberIds.isEmpty
-                            ? Colors.grey.shade400
-                            : Colors.grey.shade700,
-                      ),
-                      label: Text(
-                        '清空',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: _selectedMemberIds.isEmpty
-                              ? Colors.grey.shade400
-                              : Colors.grey.shade700,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.refresh,
+                              size: 22,
+                              color: _selectedMemberIds.isEmpty
+                                  ? Colors.grey.shade400
+                                  : Colors.grey.shade700,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '清空',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: _selectedMemberIds.isEmpty
+                                    ? Colors.grey.shade400
+                                    : Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
