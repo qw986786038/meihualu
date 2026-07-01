@@ -23,6 +23,7 @@ class _ScreenTextOcrPickerPageState extends State<ScreenTextOcrPickerPage> {
   final AliyunOcrService ocrService = Get.find<AliyunOcrService>();
   bool _isRecognizing = false;
 
+  
   @override
   void dispose() {
     if (Get.isRegistered<ImageTaggingController>()) {

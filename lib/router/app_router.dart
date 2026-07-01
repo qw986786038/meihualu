@@ -21,6 +21,8 @@ import 'package:watermark_camera/pages/team/team_qr_invite_page.dart';
 import 'package:watermark_camera/pages/team/team_member_profile_page.dart';
 import 'package:watermark_camera/pages/team/team_photo_search_page.dart';
 import 'package:watermark_camera/pages/team/team_photo_ledger_page.dart';
+import 'package:watermark_camera/pages/team/team_watermark_style_picker_page.dart';
+import 'package:watermark_camera/pages/team/team_watermark_template_picker_page.dart';
 import 'package:watermark_camera/pages/team/team_workspace_page.dart';
 import 'package:watermark_camera/models/team.dart';
 import 'package:watermark_camera/models/team_member.dart';
@@ -135,6 +137,20 @@ final GoRouter appRouter = GoRouter(
         final team = state.extra is Team ? state.extra as Team : TeamWorkspacePage.debugTeam;
         return TeamPhotoLedgerPage(team: team);
       },
+    ),
+    GoRoute(
+      path: AppPaths.teamWatermarkTemplates,
+      name: 'teamWatermarkTemplates',
+      builder: (BuildContext context, GoRouterState state) {
+        final team = state.extra is Team ? state.extra as Team : null;
+        return TeamWatermarkTemplatePickerPage(team: team);
+      },
+    ),
+    GoRoute(
+      path: AppPaths.teamWatermarkStylePicker,
+      name: 'teamWatermarkStylePicker',
+      builder: (BuildContext context, GoRouterState state) =>
+          const TeamWatermarkStylePickerPage(),
     ),
     GoRoute(
       path: AppPaths.teamInviteMembers,

@@ -163,6 +163,12 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
     await context.push(AppPaths.teamPhotoLedger, extra: team);
   }
 
+  Future<void> _openTeamWatermarkTemplates() async {
+    final team = _team;
+    if (team == null) return;
+    await context.push(AppPaths.teamWatermarkTemplates, extra: team);
+  }
+
   @override
   Widget build(BuildContext context) {
     final team = _team!;
@@ -189,6 +195,7 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
             onInviteMembersTap: _openInviteMembers,
             onViewRecentPhotosTap: _viewRecentPhotos,
             onPhotoLedgerTap: _openPhotoLedger,
+            onTeamWatermarkTap: _openTeamWatermarkTemplates,
             onSwitchModeTap: _openWorkModeSwitchSheet,
             onComingSoon: _showComingSoon,
           ),
@@ -206,6 +213,7 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
           _TeamManageTab(
             team: team,
             onTeamInfoTap: _openTeamInfo,
+            onTeamWatermarkTap: _openTeamWatermarkTemplates,
             onComingSoon: _showComingSoon,
           ),
         ],
@@ -262,6 +270,7 @@ class _WorkCircleTab extends StatelessWidget {
     required this.onInviteMembersTap,
     required this.onViewRecentPhotosTap,
     required this.onPhotoLedgerTap,
+    required this.onTeamWatermarkTap,
     required this.onSwitchModeTap,
     required this.onComingSoon,
   });
@@ -277,6 +286,7 @@ class _WorkCircleTab extends StatelessWidget {
   final VoidCallback onInviteMembersTap;
   final VoidCallback onViewRecentPhotosTap;
   final VoidCallback onPhotoLedgerTap;
+  final VoidCallback onTeamWatermarkTap;
   final VoidCallback onSwitchModeTap;
   final void Function(String feature) onComingSoon;
 
@@ -297,6 +307,7 @@ class _WorkCircleTab extends StatelessWidget {
           onSwitchModeTap: onSwitchModeTap,
           onComingSoon: onComingSoon,
           onPhotoLedgerTap: onPhotoLedgerTap,
+          onTeamWatermarkTap: onTeamWatermarkTap,
         ),
         Expanded(
           child: ColoredBox(
@@ -366,6 +377,7 @@ class _TeamHeader extends StatelessWidget {
     required this.onSwitchModeTap,
     required this.onComingSoon,
     required this.onPhotoLedgerTap,
+    required this.onTeamWatermarkTap,
   });
 
   final Team team;
@@ -377,6 +389,7 @@ class _TeamHeader extends StatelessWidget {
   final VoidCallback onSwitchModeTap;
   final void Function(String feature) onComingSoon;
   final VoidCallback onPhotoLedgerTap;
+  final VoidCallback onTeamWatermarkTap;
 
   @override
   Widget build(BuildContext context) {
@@ -460,6 +473,7 @@ class _TeamHeader extends StatelessWidget {
             _WorkCircleQuickActions(
               onComingSoon: onComingSoon,
               onPhotoLedgerTap: onPhotoLedgerTap,
+              onTeamWatermarkTap: onTeamWatermarkTap,
             ),
           ],
         ),
@@ -575,10 +589,12 @@ class _WorkCircleQuickActions extends StatelessWidget {
   const _WorkCircleQuickActions({
     required this.onComingSoon,
     required this.onPhotoLedgerTap,
+    required this.onTeamWatermarkTap,
   });
 
   final void Function(String feature) onComingSoon;
   final VoidCallback onPhotoLedgerTap;
+  final VoidCallback onTeamWatermarkTap;
 
   @override
   Widget build(BuildContext context) {
@@ -599,7 +615,7 @@ class _WorkCircleQuickActions extends StatelessWidget {
             label: '团队水印',
             icon: Icons.verified_outlined,
             iconColor: const Color(0xFF1677FF),
-            onTap: () => onComingSoon('团队水印'),
+            onTap: onTeamWatermarkTap,
           ),
           const SizedBox(width: 8),
           _WorkCircleQuickActionChip(
@@ -1875,11 +1891,13 @@ class _TeamManageTab extends StatefulWidget {
   const _TeamManageTab({
     required this.team,
     required this.onTeamInfoTap,
+    required this.onTeamWatermarkTap,
     required this.onComingSoon,
   });
 
   final Team team;
   final Future<void> Function() onTeamInfoTap;
+  final VoidCallback onTeamWatermarkTap;
   final void Function(String feature) onComingSoon;
 
   @override
@@ -1923,7 +1941,7 @@ class _TeamManageTabState extends State<_TeamManageTab> {
               _ManageSettingItem(
                 title: '团队水印',
                 subtitle: '一人创建 团队共用',
-                onTap: () => widget.onComingSoon('团队水印'),
+                onTap: widget.onTeamWatermarkTap,
               ),
               _ManageSettingItem(
                 title: '照片设置',

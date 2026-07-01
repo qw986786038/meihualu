@@ -14,6 +14,8 @@ abstract final class AppPaths {
   static const teamWorkspace = '/team/workspace';
   static const teamPhotoSearch = '/team/photo-search';
   static const teamPhotoLedger = '/team/photo-ledger';
+  static const teamWatermarkTemplates = '/team/watermark-templates';
+  static const teamWatermarkStylePicker = '/team/watermark-styles';
   static const teamInviteMembers = '/team/invite-members';
   static const teamQrInvite = '/team/qr-invite';
   static const teamDepartmentManagement = '/team/department-management';
