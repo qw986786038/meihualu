@@ -158,86 +158,88 @@ class _TeamPhotoLedgerPageState extends State<TeamPhotoLedgerPage>
               bottom: false,
               child: Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 4, 12, 0),
-                    child: Row(
+                  SizedBox(
+                    height: 48,
+                    child: Stack(
                       children: [
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                        ),
-                        Expanded(
-                          child: TabBar(
-                            controller: _tabController,
-                            labelColor: _primaryBlue,
-                            unselectedLabelColor: Colors.grey.shade600,
-                            indicatorColor: _primaryBlue,
-                            indicatorSize: TabBarIndicatorSize.label,
-                            labelStyle: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: IconButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            constraints: const BoxConstraints(
+                              minWidth: 48,
+                              minHeight: 48,
                             ),
-                            unselectedLabelStyle: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w400,
-                            ),
-                            tabs: [
-                              const Tab(text: '照片明细'),
-                              Tab(
-                                child: Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    const Text('拍照统计'),
-                                    Positioned(
-                                      right: -8,
-                                      top: -2,
-                                      child: Container(
-                                        width: 6,
-                                        height: 6,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFFE64545),
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const Tab(text: '拜访记录'),
-                            ],
                           ),
                         ),
-                        const SizedBox(width: 40),
+                        TabBar(
+                          controller: _tabController,
+                          labelColor: _primaryBlue,
+                          unselectedLabelColor: Colors.grey.shade600,
+                          indicatorColor: _primaryBlue,
+                          indicatorSize: TabBarIndicatorSize.label,
+                          tabHeight: 48,
+                          padding: const EdgeInsets.symmetric(horizontal: 48),
+                          labelStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          unselectedLabelStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                          ),
+                          tabs: [
+                            const Tab(text: '照片明细'),
+                            Tab(
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  const Text('拍照统计'),
+                                  Positioned(
+                                    right: -8,
+                                    top: -2,
+                                    child: Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFE64545),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Tab(text: '拜访记录'),
+                          ],
+                        ),
                       ],
                     ),
                   ),
-                  Padding(
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
                     child: Row(
                       children: [
-                        Expanded(
-                          child: _FilterChip(
-                            label: _rangeLabel,
-                            onTap: _openDateFilter,
-                          ),
+                        _FilterChip(
+                          label: _rangeLabel,
+                          onTap: _openDateFilter,
                         ),
                         const SizedBox(width: 8),
-                        Expanded(
-                          child: _FilterChip(
-                            label: _selectedMemberIds.isEmpty
-                                ? '筛选成员'
-                                : '已选${_selectedMemberIds.length}人',
-                            onTap: _openMemberFilter,
-                          ),
+                        _FilterChip(
+                          label: _selectedMemberIds.isEmpty
+                              ? '筛选成员'
+                              : '已选${_selectedMemberIds.length}人',
+                          onTap: _openMemberFilter,
                         ),
                         const SizedBox(width: 8),
-                        Expanded(
-                          child: _FilterChip(
-                            label: _selectedWatermarkIds.isEmpty
-                                ? '筛选水印'
-                                : '已选${_selectedWatermarkIds.length}个',
-                            onTap: _openWatermarkFilter,
-                          ),
+                        _FilterChip(
+                          label: _selectedWatermarkIds.isEmpty
+                              ? '筛选水印'
+                              : '已选${_selectedWatermarkIds.length}个',
+                          onTap: _openWatermarkFilter,
                         ),
                       ],
                     ),
@@ -316,19 +318,15 @@ class _FilterChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(6),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF333333),
-                  ),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF333333),
                 ),
               ),
               Icon(Icons.expand_more, size: 16, color: Colors.grey.shade600),
