@@ -180,7 +180,6 @@ class _TeamPhotoLedgerPageState extends State<TeamPhotoLedgerPage>
                           unselectedLabelColor: Colors.grey.shade600,
                           indicatorColor: _primaryBlue,
                           indicatorSize: TabBarIndicatorSize.label,
-                          tabHeight: 48,
                           padding: const EdgeInsets.symmetric(horizontal: 48),
                           labelStyle: const TextStyle(
                             fontSize: 16,
