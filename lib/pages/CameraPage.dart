@@ -67,12 +67,12 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
+      showDragHandle: false,
       backgroundColor: Colors.white,
       builder: (sheetContext) {
         return FractionallySizedBox(
-          heightFactor: 0.5,
-          child: WaterMarkSelectPage(),
+          heightFactor: 0.55,
+          child: const WaterMarkSelectPage(),
         );
       },
     );

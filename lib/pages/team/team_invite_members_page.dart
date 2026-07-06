@@ -124,7 +124,7 @@ class _TeamInviteMembersPageState extends State<TeamInviteMembersPage> {
               child: const Icon(Icons.contacts_outlined, color: Colors.white, size: 22),
             ),
             title: '手机通讯录添加',
-            onTap: () => _showComingSoon('手机通讯录添加'),
+            onTap: () => context.push(AppPaths.teamContactInvite, extra: _team),
           ),
           _divider(),
           _InviteMethodTile(

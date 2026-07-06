@@ -92,6 +92,13 @@ class WaterMarkController extends GetxController {
     controller.removeSelected();
   }
 
+  void removeWaterMark() {
+    final item = _findWaterMarkItem();
+    if (item != null) {
+      controller.removeItem(item.id);
+    }
+  }
+
   void selectTemplate(String templateId) {
     final preset = watermarkTemplateById(templateId);
     if (selectedTemplateId.value != preset.id) {

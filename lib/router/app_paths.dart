@@ -17,6 +17,7 @@ abstract final class AppPaths {
   static const teamWatermarkTemplates = '/team/watermark-templates';
   static const teamWatermarkStylePicker = '/team/watermark-styles';
   static const teamInviteMembers = '/team/invite-members';
+  static const teamContactInvite = '/team/contact-invite';
   static const teamQrInvite = '/team/qr-invite';
   static const teamDepartmentManagement = '/team/department-management';
   static const teamInfo = '/team/info';

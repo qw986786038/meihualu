@@ -1,4 +1,4 @@
-package cn.hwato.watermark_camera
+package com.palsmon.mediarecord.app
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
