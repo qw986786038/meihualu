@@ -313,7 +313,7 @@ class _ClassicTemplate extends StatelessWidget {
       children: [
         extras,
         Row(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(_formatHm(now), style: timeStyle),
             Container(
@@ -322,23 +322,43 @@ class _ClassicTemplate extends StatelessWidget {
               height: compact ? 22 : 30,
               color: Colors.amber,
             ),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_formatYmd(now), style: metaStyle),
-                if (showWeekday)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_weekdayLabel(now), style: metaStyle),
-                      if (weatherLabel != null) ...[
-                        SizedBox(width: compact ? 6 : 8),
-                        Text(weatherLabel, style: metaStyle),
-                      ],
-                    ],
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _formatYmd(now),
+                    style: metaStyle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-              ],
+                  if (showWeekday)
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            _weekdayLabel(now),
+                            style: metaStyle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (weatherLabel != null) ...[
+                          SizedBox(width: compact ? 6 : 8),
+                          Flexible(
+                            child: Text(
+                              weatherLabel,
+                              style: metaStyle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                ],
+              ),
             ),
           ],
         ),
@@ -353,11 +373,21 @@ class _ClassicTemplate extends StatelessWidget {
         ],
         if (showCoordinate && coordinateText != null) ...[
           SizedBox(height: compact ? 1 : 2),
-          Text(coordinateText!, style: metaStyle),
+          Text(
+            coordinateText!,
+            style: metaStyle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
         if (showAltitude && altitudeText != null) ...[
           SizedBox(height: compact ? 1 : 2),
-          Text(altitudeText!, style: metaStyle),
+          Text(
+            altitudeText!,
+            style: metaStyle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
         footer,
       ],
@@ -436,38 +466,13 @@ class _PanelTemplate extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           extras,
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: compact ? 6 : 7,
-                  vertical: compact ? 2 : 3,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.amber,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  preset.badge,
-                  style: TextStyle(
-                    color: Colors.black87,
-                    fontSize: compact ? 9 : 10,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              SizedBox(width: compact ? 6 : 8),
-              Text(_formatYmd(now), style: titleStyle),
-              if (showWeekday) ...[
-                SizedBox(width: compact ? 4 : 6),
-                Text(_weekdayLabel(now), style: titleStyle),
-                if (weatherLabel != null) ...[
-                  SizedBox(width: compact ? 4 : 6),
-                  Text(weatherLabel, style: titleStyle),
-                ],
-              ],
-            ],
+          _PanelMetaRow(
+            compact: compact,
+            badge: preset.badge,
+            dateText: _formatYmd(now),
+            weekdayText: showWeekday ? _weekdayLabel(now) : null,
+            weatherLabel: showWeekday ? weatherLabel : null,
+            titleStyle: titleStyle,
           ),
           SizedBox(height: compact ? 6 : 8),
           Text(_formatHm(now), style: timeStyle),
@@ -482,11 +487,21 @@ class _PanelTemplate extends StatelessWidget {
           ],
           if (showCoordinate && coordinateText != null) ...[
             SizedBox(height: compact ? 2 : 4),
-            Text(coordinateText!, style: metaStyle),
+            Text(
+              coordinateText!,
+              style: metaStyle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
           if (showAltitude && altitudeText != null) ...[
             SizedBox(height: compact ? 2 : 4),
-            Text(altitudeText!, style: metaStyle),
+            Text(
+              altitudeText!,
+              style: metaStyle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
           footer,
         ],
@@ -566,28 +581,15 @@ class _MinimalTemplate extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           extras,
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.place_rounded,
-                color: Colors.amber,
-                size: compact ? 12 : 14,
-              ),
-              SizedBox(width: compact ? 4 : 6),
-              Text(preset.title, style: titleStyle),
-              SizedBox(width: compact ? 6 : 8),
-              Text(
-                showWeekday
-                    ? '${_formatYmd(now)} ${_weekdayLabel(now)}'
-                    : _formatYmd(now),
-                style: metaStyle,
-              ),
-              if (showWeekday && weatherLabel != null) ...[
-                SizedBox(width: compact ? 4 : 6),
-                Text(weatherLabel, style: metaStyle),
-              ],
-            ],
+          _MinimalMetaRow(
+            compact: compact,
+            title: preset.title,
+            dateText: showWeekday
+                ? '${_formatYmd(now)} ${_weekdayLabel(now)}'
+                : _formatYmd(now),
+            weatherLabel: showWeekday ? weatherLabel : null,
+            titleStyle: titleStyle,
+            metaStyle: metaStyle,
           ),
           SizedBox(height: compact ? 5 : 6),
           Text(_formatHm(now), style: timeStyle),
@@ -602,15 +604,145 @@ class _MinimalTemplate extends StatelessWidget {
           ],
           if (showCoordinate && coordinateText != null) ...[
             SizedBox(height: compact ? 1 : 2),
-            Text(coordinateText!, style: metaStyle),
+            Text(
+              coordinateText!,
+              style: metaStyle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
           if (showAltitude && altitudeText != null) ...[
             SizedBox(height: compact ? 1 : 2),
-            Text(altitudeText!, style: metaStyle),
+            Text(
+              altitudeText!,
+              style: metaStyle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
           footer,
         ],
       ),
+    );
+  }
+}
+
+class _PanelMetaRow extends StatelessWidget {
+  const _PanelMetaRow({
+    required this.compact,
+    required this.badge,
+    required this.dateText,
+    required this.weekdayText,
+    required this.weatherLabel,
+    required this.titleStyle,
+  });
+
+  final bool compact;
+  final String badge;
+  final String dateText;
+  final String? weekdayText;
+  final String? weatherLabel;
+  final TextStyle titleStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: compact ? 4 : 6,
+      runSpacing: compact ? 2 : 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 6 : 7,
+            vertical: compact ? 2 : 3,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.amber,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            badge,
+            style: TextStyle(
+              color: Colors.black87,
+              fontSize: compact ? 9 : 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        Text(
+          dateText,
+          style: titleStyle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (weekdayText != null)
+          Text(
+            weekdayText!,
+            style: titleStyle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        if (weatherLabel != null)
+          Text(
+            weatherLabel!,
+            style: titleStyle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+      ],
+    );
+  }
+}
+
+class _MinimalMetaRow extends StatelessWidget {
+  const _MinimalMetaRow({
+    required this.compact,
+    required this.title,
+    required this.dateText,
+    required this.weatherLabel,
+    required this.titleStyle,
+    required this.metaStyle,
+  });
+
+  final bool compact;
+  final String title;
+  final String dateText;
+  final String? weatherLabel;
+  final TextStyle titleStyle;
+  final TextStyle metaStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: compact ? 4 : 6,
+      runSpacing: compact ? 2 : 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Icon(
+          Icons.place_rounded,
+          color: Colors.amber,
+          size: compact ? 12 : 14,
+        ),
+        Text(
+          title,
+          style: titleStyle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        Text(
+          dateText,
+          style: metaStyle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (weatherLabel != null)
+          Text(
+            weatherLabel!,
+            style: metaStyle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+      ],
     );
   }
 }

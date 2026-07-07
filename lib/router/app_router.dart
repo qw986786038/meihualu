@@ -4,7 +4,10 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:watermark_camera/pages/CameraPage.dart';
 import 'package:watermark_camera/pages/HomePage.dart';
 import 'package:watermark_camera/pages/WelcomePage.dart';
-import 'package:watermark_camera/pages/auth/fake_login_page.dart';
+import 'package:watermark_camera/pages/auth/edit_profile_page.dart';
+import 'package:watermark_camera/pages/auth/forgot_password_page.dart';
+import 'package:watermark_camera/pages/auth/login_page.dart';
+import 'package:watermark_camera/pages/auth/user_profile_page.dart';
 import 'package:watermark_camera/pages/personal/personal_space_page.dart';
 import 'package:watermark_camera/pages/personal/personal_space_upload_controller.dart';
 import 'package:watermark_camera/pages/personal/personal_space_upload_picker_page.dart';
@@ -75,7 +78,25 @@ final GoRouter appRouter = GoRouter(
       path: AppPaths.login,
       name: 'login',
       builder: (BuildContext context, GoRouterState state) =>
-          const FakeLoginPage(),
+          const LoginPage(),
+    ),
+    GoRoute(
+      path: AppPaths.forgotPassword,
+      name: 'forgotPassword',
+      builder: (BuildContext context, GoRouterState state) =>
+          const ForgotPasswordPage(),
+    ),
+    GoRoute(
+      path: AppPaths.userProfile,
+      name: 'userProfile',
+      builder: (BuildContext context, GoRouterState state) =>
+          const UserProfilePage(),
+    ),
+    GoRoute(
+      path: AppPaths.editProfile,
+      name: 'editProfile',
+      builder: (BuildContext context, GoRouterState state) =>
+          const EditProfilePage(),
     ),
     GoRoute(
       path: AppPaths.createTeam,

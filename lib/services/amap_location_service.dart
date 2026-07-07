@@ -79,7 +79,7 @@ class AMapLocationService extends GetxService {
       watermarkWeather.value = '';
       watermarkTemperature.value = '';
       nearbyRecommendations.clear();
-      final location = await FlAMapLocation().getLocation(
+      AMapLocation? location = await FlAMapLocation().getLocation(
         optionForAndroid: const AMapLocationOptionForAndroid(
           locationMode: AMapLocationMode.heightAccuracy,
           locationProtocol: AMapLocationProtocol.https,
@@ -98,21 +98,32 @@ class AMapLocationService extends GetxService {
           detectRiskOfFakeLocation: true,
         ),
       );
-      if (location == null) {
+      if (!_isValidLocation(location)) {
+        _logLocationFailure('高德定位失败', location);
+        location = await _getLocationFromGeolocator();
+      }
+      if (!_isValidLocation(location)) {
         watermarkAddress.value = _locationFailedText;
         return;
       }
 
       latestLocation.value = location;
-      watermarkAddress.value = _formatBriefAddress(location);
+      var address = _formatBriefAddress(location!);
+      if (address == _locationFailedText) {
+        final regeocoded = await _fetchRegeocodeAddress(
+          location.latitude!,
+          location.longitude!,
+        );
+        if (regeocoded != null) {
+          address = regeocoded;
+        }
+      }
+      watermarkAddress.value = address;
       nearbyRecommendations.assignAll(_buildLocalRecommendations(location));
       unawaited(_fetchWeather(location.adCode));
       unawaited(_fetchNearbyRecommendations(location));
     } catch (e, st) {
-      assert(() {
-        debugPrint('AMap location failed: $e\n$st');
-        return true;
-      }());
+      debugPrint('AMap location failed: $e\n$st');
       watermarkAddress.value = _locationFailedText;
     } finally {
       isLocating.value = false;
@@ -190,7 +201,120 @@ class AMapLocationService extends GetxService {
     if (brief.isNotEmpty && nearby != null) return '$brief · $nearby';
     if (brief.isNotEmpty) return brief;
 
+    final latitude = location.latitude;
+    final longitude = location.longitude;
+    if (latitude != null && longitude != null) {
+      return '${latitude.toStringAsFixed(5)}, ${longitude.toStringAsFixed(5)}';
+    }
+
     return _locationFailedText;
+  }
+
+  bool _isValidLocation(AMapLocation? location) {
+    if (location == null) return false;
+
+    final errorCode = location.error?.errorCode;
+    if (errorCode != null && errorCode != 0) return false;
+
+    return location.latitude != null && location.longitude != null;
+  }
+
+  void _logLocationFailure(String reason, AMapLocation? location) {
+    final error = location?.error;
+    final buffer = StringBuffer(reason);
+    if (error?.errorCode != null) {
+      buffer.write(' | code=${error!.errorCode}');
+    }
+    if (error?.errorInfo?.isNotEmpty == true) {
+      buffer.write(' | info=${error!.errorInfo}');
+    }
+    if (location is AMapLocationForAndroid) {
+      final detail = location.locationDetail?.trim();
+      if (detail != null && detail.isNotEmpty) {
+        buffer.write(' | detail=$detail');
+      }
+    }
+    debugPrint(buffer.toString());
+  }
+
+  Future<AMapLocation?> _getLocationFromGeolocator() async {
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+      debugPrint(
+        'Geolocator fallback success: '
+        '${position.latitude}, ${position.longitude}',
+      );
+      return AMapLocation.fromMap({
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'errorCode': 0,
+      });
+    } catch (e, st) {
+      debugPrint('Geolocator fallback failed: $e\n$st');
+      return null;
+    }
+  }
+
+  Future<String?> _fetchRegeocodeAddress(
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      final uri = Uri.https('restapi.amap.com', '/v3/geocode/regeo', {
+        'key': _webServiceKey,
+        'location': '$longitude,$latitude',
+        'extensions': 'base',
+        'output': 'JSON',
+      });
+      final response = await http.get(uri);
+      if (response.statusCode != 200) return null;
+
+      final body = jsonDecode(response.body);
+      if (body is! Map || body['status']?.toString() != '1') return null;
+
+      final regeocode = body['regeocode'];
+      if (regeocode is! Map) return null;
+
+      final formatted = regeocode['formatted_address']?.toString().trim();
+      if (formatted != null && formatted.isNotEmpty) {
+        return formatted;
+      }
+
+      final component = regeocode['addressComponent'];
+      if (component is! Map) return null;
+
+      final parts = <String>[];
+      void addPart(String? value) {
+        final text = value?.trim();
+        if (text == null || text.isEmpty || text == '[]') return;
+        if (parts.contains(text)) return;
+        parts.add(text);
+      }
+
+      addPart(component['city']?.toString());
+      addPart(component['district']?.toString());
+      addPart(component['township']?.toString());
+
+      final streetNumber = component['streetNumber'];
+      if (streetNumber is Map) {
+        final street = streetNumber['street']?.toString();
+        final number = streetNumber['number']?.toString();
+        if (street != null && street.isNotEmpty) {
+          addPart(number == null || number.isEmpty ? street : '$street$number');
+        }
+      }
+
+      if (parts.isEmpty) return null;
+      return parts.join();
+    } catch (e, st) {
+      debugPrint('AMap regeocode failed: $e\n$st');
+      return null;
+    }
   }
 
   List<String> _buildLocalRecommendations(AMapLocation location) {
@@ -275,10 +399,7 @@ class AMapLocationService extends GetxService {
 
       nearbyRecommendations.assignAll(merged);
     } catch (e, st) {
-      assert(() {
-        debugPrint('AMap nearby POI failed: $e\n$st');
-        return true;
-      }());
+      debugPrint('AMap nearby POI failed: $e\n$st');
     }
   }
 
@@ -341,10 +462,7 @@ class AMapLocationService extends GetxService {
       watermarkWeather.value = live['weather']?.toString().trim() ?? '';
       watermarkTemperature.value = live['temperature']?.toString().trim() ?? '';
     } catch (e, st) {
-      assert(() {
-        debugPrint('AMap weather failed: $e\n$st');
-        return true;
-      }());
+      debugPrint('AMap weather failed: $e\n$st');
     }
   }
 

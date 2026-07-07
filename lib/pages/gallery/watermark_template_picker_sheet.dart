@@ -92,7 +92,7 @@ class _TemplateTile extends StatelessWidget {
             border: Border.all(color: Colors.grey.shade300),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -115,7 +115,7 @@ class _TemplateTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
                   preset.title,
                   maxLines: 1,
@@ -123,7 +123,8 @@ class _TemplateTile extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                    fontSize: 12,
+                    height: 1.2,
                   ),
                 ),
               ],

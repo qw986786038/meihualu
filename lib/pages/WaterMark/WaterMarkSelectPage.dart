@@ -183,9 +183,10 @@ class _WaterMarkSelectPageState extends State<WaterMarkSelectPage> {
   }
 
   Widget _buildHeader() {
-    return SizedBox(
-      height: 48,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           IconButton(
             onPressed: _disableWatermark,
@@ -193,26 +194,30 @@ class _WaterMarkSelectPageState extends State<WaterMarkSelectPage> {
             tooltip: '无水印',
           ),
           Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _HeaderTab(
-                  label: '团队水印',
-                  selected: _activeTab == _WatermarkSourceTab.team,
-                  badge: '团队提效',
-                  onTap: () => setState(
-                    () => _activeTab = _WatermarkSourceTab.team,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _HeaderTab(
+                    label: '团队水印',
+                    selected: _activeTab == _WatermarkSourceTab.team,
+                    badge: '团队提效',
+                    onTap: () => setState(
+                      () => _activeTab = _WatermarkSourceTab.team,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 28),
-                _HeaderTab(
-                  label: '我的水印',
-                  selected: _activeTab == _WatermarkSourceTab.mine,
-                  onTap: () => setState(
-                    () => _activeTab = _WatermarkSourceTab.mine,
+                  const SizedBox(width: 20),
+                  _HeaderTab(
+                    label: '我的水印',
+                    selected: _activeTab == _WatermarkSourceTab.mine,
+                    onTap: () => setState(
+                      () => _activeTab = _WatermarkSourceTab.mine,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           IconButton(
@@ -322,7 +327,7 @@ class _WaterMarkSelectPageState extends State<WaterMarkSelectPage> {
                       crossAxisCount: 2,
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 10,
-                      childAspectRatio: 0.72,
+                      childAspectRatio: 0.68,
                     ),
                     itemCount: items.length,
                     itemBuilder: (context, index) {
@@ -432,38 +437,46 @@ class _HeaderTab extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (badge != null)
-            Container(
-              margin: const EdgeInsets.only(bottom: 2),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF4D4F),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                badge!,
-                style: const TextStyle(
-                  fontSize: 9,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            )
-          else
-            const SizedBox(height: 14),
+          SizedBox(
+            height: 16,
+            child: badge == null
+                ? null
+                : Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF4D4F),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        badge!,
+                        style: const TextStyle(
+                          fontSize: 9,
+                          height: 1.1,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+          ),
           Text(
             label,
             style: TextStyle(
               fontSize: 16,
+              height: 1.2,
               fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               color: selected ? const Color(0xFF111111) : const Color(0xFF999999),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             width: selected ? 24 : 0,
-            height: 3,
+            height: 2,
             decoration: BoxDecoration(
               color: _primaryBlue,
               borderRadius: BorderRadius.circular(2),
@@ -565,14 +578,15 @@ class _PersonalTemplateCard extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                 child: Text(
                   item.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
+                    height: 1.2,
                     fontWeight: FontWeight.w600,
                     color: selected ? _primaryBlue : const Color(0xFF333333),
                   ),
@@ -639,7 +653,8 @@ class _TeamInfoCard extends StatelessWidget {
             label: const Text('切换团队'),
             style: TextButton.styleFrom(
               foregroundColor: _primaryBlue,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ),
         ],
@@ -859,13 +874,17 @@ class _RecommendedTemplateCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Text(
                 template.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF333333)),
+                style: const TextStyle(
+                  fontSize: 12,
+                  height: 1.2,
+                  color: Color(0xFF333333),
+                ),
               ),
             ],
           ),

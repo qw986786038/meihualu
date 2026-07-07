@@ -12,6 +12,7 @@ import 'package:watermark_camera/router/app_paths.dart';
 import 'package:watermark_camera/services/aliyun_image_tagging_service.dart';
 import 'package:watermark_camera/services/aliyun_ocr_service.dart';
 import 'package:watermark_camera/services/amap_location_service.dart';
+import 'package:watermark_camera/widgets/camera_user_menu_sheet.dart';
 import 'package:watermark_camera/widgets/camera_bottom_bar.dart';
 import 'package:watermark_camera/widgets/camera_map_overlay.dart';
 import 'package:watermark_camera/widgets/camera_map_settings_sheet.dart';
@@ -62,6 +63,11 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
     await showCameraMapSettingsSheet(context);
   }
 
+  Future<void> _openUserMenu() async {
+    if (!mounted) return;
+    await showCameraUserMenuSheet(context);
+  }
+
   Future<void> _openWatermarkSheet() async {
     if (!mounted) return;
     await showModalBottomSheet<void>(
@@ -72,7 +78,10 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
       builder: (sheetContext) {
         return FractionallySizedBox(
           heightFactor: 0.55,
-          child: const WaterMarkSelectPage(),
+          child: const SafeArea(
+            top: false,
+            child: WaterMarkSelectPage(),
+          ),
         );
       },
     );
@@ -223,6 +232,11 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
               AppBar(
                 backgroundColor: Colors.transparent,
                 foregroundColor: Colors.white,
+                leading: IconButton(
+                  tooltip: '菜单',
+                  onPressed: _openUserMenu,
+                  icon: const Icon(Icons.menu),
+                ),
                 actions: [
                   Obx(
                     () => IconButton(

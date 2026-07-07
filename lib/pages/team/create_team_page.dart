@@ -57,7 +57,13 @@ class _CreateTeamPageState extends State<CreateTeamPage> {
     setState(() => _isSubmitting = false);
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('创建失败，请重试')),
+        SnackBar(
+          content: Text(
+            _auth.lastErrorMessage.value.isNotEmpty
+                ? _auth.lastErrorMessage.value
+                : '创建失败，请重试',
+          ),
+        ),
       );
       return;
     }
