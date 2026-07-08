@@ -6,6 +6,7 @@ import 'package:getx_plus/getx_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:watermark_camera/config/api_config.dart';
 import 'package:watermark_camera/models/api/api_response.dart';
+import 'package:watermark_camera/models/api/paged_api_response.dart';
 import 'package:watermark_camera/utils/upload_path_parser.dart';
 
 class ApiClient extends GetxService {
@@ -32,6 +33,123 @@ class ApiClient extends GetxService {
         ...?headers,
       },
     );
+  }
+
+  Future<PagedApiResponse<T>> postAuthPaged<T>(
+    String path, {
+    required String accessToken,
+    required Map<String, dynamic> body,
+    required T Function(Map<String, dynamic> json) itemFromJson,
+    Map<String, String>? headers,
+  }) {
+    return postPaged(
+      path,
+      body: body,
+      itemFromJson: itemFromJson,
+      headers: {
+        ...authHeaders(accessToken),
+        ...?headers,
+      },
+    );
+  }
+
+  Future<PagedApiResponse<T>> postPaged<T>(
+    String path, {
+    required Map<String, dynamic> body,
+    required T Function(Map<String, dynamic> json) itemFromJson,
+    Map<String, String>? headers,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}$path');
+
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          ...?headers,
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        _logFailure(
+          method: 'POST',
+          uri: uri,
+          requestBody: body,
+          statusCode: response.statusCode,
+          responseBody: response.body,
+          reason: 'HTTP 状态码异常',
+        );
+        throw FormatException('HTTP ${response.statusCode}');
+      }
+
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(response.body);
+      } catch (error, stackTrace) {
+        _logFailure(
+          method: 'POST',
+          uri: uri,
+          requestBody: body,
+          statusCode: response.statusCode,
+          responseBody: response.body,
+          reason: 'JSON 解析失败',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        throw FormatException('接口响应格式错误');
+      }
+
+      if (decoded is! Map<String, dynamic>) {
+        _logFailure(
+          method: 'POST',
+          uri: uri,
+          requestBody: body,
+          statusCode: response.statusCode,
+          responseBody: response.body,
+          reason: '响应格式错误',
+        );
+        throw FormatException('接口响应格式错误');
+      }
+
+      final result = PagedApiResponse.fromJson(decoded, itemFromJson);
+      if (!result.isSuccess) {
+        _logFailure(
+          method: 'POST',
+          uri: uri,
+          requestBody: body,
+          statusCode: response.statusCode,
+          responseBody: response.body,
+          businessCode: result.code,
+          businessMsg: result.msg,
+          reason: '业务失败',
+        );
+      } else {
+        _logResponse(
+          method: 'POST',
+          uri: uri,
+          requestBody: body,
+          statusCode: response.statusCode,
+          responseBody: response.body,
+          businessCode: result.code,
+          businessMsg: result.msg,
+        );
+      }
+
+      return result;
+    } catch (error, stackTrace) {
+      if (error is! FormatException) {
+        _logFailure(
+          method: 'POST',
+          uri: uri,
+          requestBody: body,
+          reason: error.toString(),
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+      rethrow;
+    }
   }
 
   Future<ApiResponse<T>> post<T>(

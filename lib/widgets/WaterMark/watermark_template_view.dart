@@ -313,6 +313,7 @@ class _ClassicTemplate extends StatelessWidget {
       children: [
         extras,
         Row(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(_formatHm(now), style: timeStyle),
@@ -322,43 +323,23 @@ class _ClassicTemplate extends StatelessWidget {
               height: compact ? 22 : 30,
               color: Colors.amber,
             ),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _formatYmd(now),
-                    style: metaStyle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (showWeekday)
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            _weekdayLabel(now),
-                            style: metaStyle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (weatherLabel != null) ...[
-                          SizedBox(width: compact ? 6 : 8),
-                          Flexible(
-                            child: Text(
-                              weatherLabel,
-                              style: metaStyle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_formatYmd(now), style: metaStyle),
+                if (showWeekday)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_weekdayLabel(now), style: metaStyle),
+                      if (weatherLabel != null) ...[
+                        SizedBox(width: compact ? 6 : 8),
+                        Text(weatherLabel, style: metaStyle),
                       ],
-                    ),
-                ],
-              ),
+                    ],
+                  ),
+              ],
             ),
           ],
         ),

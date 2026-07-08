@@ -50,16 +50,29 @@ class _JoinTeamByNamePageState extends State<JoinTeamByNamePage> {
     });
 
     if (results.isEmpty) {
-      _showMessage('未找到匹配的团队');
+      _showMessage(
+        _auth.lastErrorMessage.value.isNotEmpty
+            ? _auth.lastErrorMessage.value
+            : '未找到匹配的团队',
+      );
     }
   }
 
   Future<void> _joinTeam(Team team) async {
     setState(() => _isSearching = true);
-    await _auth.joinTeam(team);
+    final success = await _auth.joinTeam(team);
     if (!mounted) return;
 
     setState(() => _isSearching = false);
+    if (!success) {
+      _showMessage(
+        _auth.lastErrorMessage.value.isNotEmpty
+            ? _auth.lastErrorMessage.value
+            : '加入团队失败',
+      );
+      return;
+    }
+
     _showMessage('加入团队成功');
     context.pop(true);
   }
@@ -278,7 +291,9 @@ class _TeamResultTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      team.industryType,
+                      team.teamCode.isNotEmpty
+                          ? '团队号：${team.teamCode}'
+                          : '点击申请加入',
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey.shade600,

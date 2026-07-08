@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:go_router/go_router.dart';
+import 'package:watermark_camera/models/team.dart';
 import 'package:watermark_camera/services/auth_service.dart';
 
 class JoinTeamByCodePage extends StatefulWidget {
@@ -16,6 +17,7 @@ class _JoinTeamByCodePageState extends State<JoinTeamByCodePage> {
   final _codeController = TextEditingController();
   final _helpTapRecognizer = TapGestureRecognizer();
   bool _isSearching = false;
+  List<Team> _results = const [];
 
   AuthService get _auth => Get.find<AuthService>();
 
@@ -31,13 +33,41 @@ class _JoinTeamByCodePageState extends State<JoinTeamByCodePage> {
   Future<void> _search() async {
     if (!_canSearch) return;
 
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isSearching = true;
+      _results = const [];
+    });
+
+    final results = await _auth.searchTeamsByCode(_codeController.text.trim());
+    if (!mounted) return;
+
+    setState(() {
+      _isSearching = false;
+      _results = results;
+    });
+
+    if (results.isEmpty) {
+      _showMessage(
+        _auth.lastErrorMessage.value.isNotEmpty
+            ? _auth.lastErrorMessage.value
+            : '未找到该团队号，请检查后重试',
+      );
+    }
+  }
+
+  Future<void> _joinTeam(Team team) async {
     setState(() => _isSearching = true);
-    final success = await _auth.joinTeamByCode(_codeController.text.trim());
+    final success = await _auth.joinTeam(team);
     if (!mounted) return;
 
     setState(() => _isSearching = false);
     if (!success) {
-      _showMessage('未找到该团队号，请检查后重试');
+      _showMessage(
+        _auth.lastErrorMessage.value.isNotEmpty
+            ? _auth.lastErrorMessage.value
+            : '加入团队失败',
+      );
       return;
     }
 
@@ -183,7 +213,99 @@ class _JoinTeamByCodePageState extends State<JoinTeamByCodePage> {
               ),
             ],
           ),
+          if (_results.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            Text(
+              '搜索结果',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ..._results.map(
+              (team) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _TeamResultTile(
+                  team: team,
+                  onTap: () => _joinTeam(team),
+                ),
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _TeamResultTile extends StatelessWidget {
+  const _TeamResultTile({
+    required this.team,
+    required this.onTap,
+  });
+
+  final Team team;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFF5F6F8),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1677FF),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  team.name.isNotEmpty ? team.name.substring(0, 1) : '团',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      team.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      team.teamCode.isNotEmpty
+                          ? '团队号：${team.teamCode}'
+                          : '点击申请加入',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: Colors.grey.shade400),
+            ],
+          ),
+        ),
       ),
     );
   }

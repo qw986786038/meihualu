@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:watermark_camera/models/team_brand.dart';
 import 'package:watermark_camera/router/app_paths.dart';
 import 'package:watermark_camera/services/auth_service.dart';
+import 'package:watermark_camera/services/file_api_service.dart';
 
 class CreateTeamPage extends StatefulWidget {
   const CreateTeamPage({super.key});
@@ -16,11 +19,16 @@ class _CreateTeamPageState extends State<CreateTeamPage> {
   final _nameController = TextEditingController();
   String _industryType = '房屋建筑业';
   TeamBrandSelection? _brandSelection;
+  String? _uploadedLogoUrl;
+  bool _isUploadingBrand = false;
   bool _isSubmitting = false;
 
   AuthService get _auth => Get.find<AuthService>();
 
-  bool get _canSubmit => _nameController.text.trim().isNotEmpty && !_isSubmitting;
+  bool get _canSubmit =>
+      _nameController.text.trim().isNotEmpty &&
+      !_isSubmitting &&
+      !_isUploadingBrand;
 
   Future<void> _pickIndustry() async {
     final selected = await context.push<String>(
@@ -37,9 +45,49 @@ class _CreateTeamPageState extends State<CreateTeamPage> {
     final selected = await context.push<TeamBrandSelection>(
       AppPaths.teamBrandPicker,
     );
+    if (selected == null || !mounted) return;
 
-    if (selected != null) {
-      setState(() => _brandSelection = selected);
+    setState(() {
+      _brandSelection = selected;
+      _uploadedLogoUrl = null;
+    });
+
+    final imagePath = selected.imagePath?.trim();
+    if (imagePath == null || imagePath.isEmpty) return;
+
+    final file = File(imagePath);
+    if (!file.existsSync()) {
+      _showMessage('品牌图读取失败，请重新选择');
+      return;
+    }
+
+    final token = _auth.accessToken.value.trim();
+    if (token.isEmpty) {
+      _showMessage('请先登录');
+      return;
+    }
+
+    setState(() => _isUploadingBrand = true);
+    try {
+      final response = await Get.find<FileApiService>().uploadImage(
+        accessToken: token,
+        filePath: imagePath,
+      );
+      if (!mounted) return;
+
+      if (!response.isSuccess ||
+          response.data == null ||
+          response.data!.isEmpty) {
+        _showMessage(response.msg ?? '品牌图上传失败');
+        return;
+      }
+
+      setState(() => _uploadedLogoUrl = response.data);
+      _showMessage('品牌图已上传');
+    } catch (_) {
+      if (mounted) _showMessage('品牌图上传失败，请稍后重试');
+    } finally {
+      if (mounted) setState(() => _isUploadingBrand = false);
     }
   }
 
@@ -50,28 +98,37 @@ class _CreateTeamPageState extends State<CreateTeamPage> {
     final success = await _auth.createTeam(
       name: _nameController.text.trim(),
       industryType: _industryType,
-      brandImagePath: _brandSelection?.imagePath,
+      logo: _uploadedLogoUrl,
     );
     if (!mounted) return;
 
     setState(() => _isSubmitting = false);
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _auth.lastErrorMessage.value.isNotEmpty
-                ? _auth.lastErrorMessage.value
-                : '创建失败，请重试',
-          ),
-        ),
+      _showMessage(
+        _auth.lastErrorMessage.value.isNotEmpty
+            ? _auth.lastErrorMessage.value
+            : '创建失败，请重试',
       );
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('团队创建成功')),
-    );
+    _showMessage('团队创建成功');
     context.pop(true);
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _brandStatusText() {
+    if (_isUploadingBrand) return '品牌图上传中...';
+    if (_brandSelection == null) return '立即添加，享升级服务';
+    if (_uploadedLogoUrl != null && _uploadedLogoUrl!.isNotEmpty) {
+      return '${_brandSelection!.displayName}（已上传）';
+    }
+    return _brandSelection!.displayName;
   }
 
   @override
@@ -143,14 +200,20 @@ class _CreateTeamPageState extends State<CreateTeamPage> {
                 const Divider(height: 1, indent: 16),
                 _FormRow(
                   label: '公司品牌图',
-                  onTap: _pickBrandImage,
+                  onTap: _isUploadingBrand ? null : _pickBrandImage,
                   child: Row(
                     children: [
+                      if (_isUploadingBrand) ...[
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       Expanded(
                         child: Text(
-                          _brandSelection == null
-                              ? '立即添加，享升级服务'
-                              : _brandSelection!.displayName,
+                          _brandStatusText(),
                           style: TextStyle(
                             fontSize: 15,
                             color: _brandSelection == null

@@ -1,6 +1,5 @@
 import 'dart:async' show unawaited;
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:getx_plus/getx_plus.dart';
 import 'package:watermark_camera/models/api/api_response.dart';
@@ -9,7 +8,6 @@ import 'package:watermark_camera/models/api/user_info.dart';
 import 'package:watermark_camera/models/personal_space.dart';
 import 'package:watermark_camera/models/team.dart';
 import 'package:watermark_camera/services/auth_storage.dart';
-import 'package:watermark_camera/services/file_api_service.dart';
 import 'package:watermark_camera/services/personal_space_service.dart';
 import 'package:watermark_camera/services/space_api_service.dart';
 import 'package:watermark_camera/services/team_workspace_service.dart';
@@ -340,14 +338,17 @@ class AuthService extends GetxService {
     personalSpace.value = space.copyWith(syncEnabled: enabled);
   }
 
-  void setTeamSyncEnabled(bool enabled) {
-    final team = activeTeam.value;
-    if (team == null) return;
-    final updated = team.copyWith(syncEnabled: enabled);
-    activeTeam.value = updated;
-    final index = teams.indexWhere((item) => item.id == team.id);
-    if (index >= 0) {
-      teams[index] = updated;
+  void setTeamSyncEnabled(bool enabled, {String? teamId}) {
+    final targetId = teamId ?? activeTeam.value?.id;
+    if (targetId == null) return;
+
+    final index = teams.indexWhere((item) => item.id == targetId);
+    if (index < 0) return;
+
+    final updated = teams[index].copyWith(syncEnabled: enabled);
+    teams[index] = updated;
+    if (activeTeam.value?.id == targetId) {
+      activeTeam.value = updated;
     }
   }
 
@@ -378,7 +379,7 @@ class AuthService extends GetxService {
   Future<bool> createTeam({
     required String name,
     required String industryType,
-    String? brandImagePath,
+    String? logo,
   }) async {
     final trimmedName = name.trim();
     if (trimmedName.isEmpty) return false;
@@ -391,41 +392,23 @@ class AuthService extends GetxService {
 
     lastErrorMessage.value = '';
     try {
-      var logo = '';
-      final imagePath = brandImagePath?.trim();
-      if (imagePath != null && imagePath.isNotEmpty) {
-        final file = File(imagePath);
-        if (file.existsSync()) {
-          final uploadResponse = await Get.find<FileApiService>().uploadImage(
-            accessToken: token,
-            filePath: imagePath,
-          );
-          if (!uploadResponse.isSuccess ||
-              uploadResponse.data == null ||
-              uploadResponse.data!.isEmpty) {
-            lastErrorMessage.value = uploadResponse.msg ?? '上传logo失败';
-            return false;
-          }
-          logo = uploadResponse.data!;
-        }
-      }
-
       final response = await Get.find<SpaceApiService>().createTeamSpace(
         accessToken: token,
         name: trimmedName,
-        logo: logo,
+        logo: logo?.trim() ?? '',
       );
       if (!response.isSuccess) {
         lastErrorMessage.value = response.msg ?? '创建团队失败';
         return false;
       }
 
+      final resolvedLogo = logo?.trim() ?? '';
       final team = Team(
         id: 'team_${DateTime.now().millisecondsSinceEpoch}',
         name: trimmedName,
         industryType: industryType,
         teamCode: _generateTeamCode(),
-        brandImagePath: logo.isNotEmpty ? logo : brandImagePath,
+        brandImagePath: resolvedLogo.isNotEmpty ? resolvedLogo : null,
       );
       teams.add(team);
       activeTeam.value = team;
@@ -442,47 +425,81 @@ class AuthService extends GetxService {
     }
   }
 
-  Future<Team?> findTeamByCode(String teamCode) async {
-    final code = teamCode.trim();
-    if (code.isEmpty) return null;
+  Future<List<Team>> searchTeamsByName(String keyword) async {
+    return _queryTeams(spaceName: keyword);
+  }
 
-    await Future<void>.delayed(const Duration(milliseconds: 400));
+  Future<List<Team>> searchTeamsByCode(String teamCode) async {
+    return _queryTeams(spaceNo: teamCode);
+  }
 
-    for (final team in kMockJoinableTeams) {
-      if (team.teamCode == code) return team;
+  Future<List<Team>> _queryTeams({
+    String? spaceName,
+    String? spaceNo,
+  }) async {
+    final token = accessToken.value.trim();
+    if (token.isEmpty) {
+      lastErrorMessage.value = '请先登录';
+      return const [];
     }
-    return null;
+
+    lastErrorMessage.value = '';
+    try {
+      final response = await Get.find<SpaceApiService>().queryTeamList(
+        accessToken: token,
+        spaceName: spaceName?.trim() ?? '',
+        spaceNo: spaceNo?.trim() ?? '',
+      );
+      if (!response.isSuccess) {
+        lastErrorMessage.value = response.msg ?? '查询团队失败';
+        return const [];
+      }
+      return response.rows.map((item) => item.toTeam()).toList();
+    } catch (_) {
+      lastErrorMessage.value = '网络异常，请稍后重试';
+      return const [];
+    }
   }
 
   Future<bool> joinTeamByCode(String teamCode) async {
-    final team = await findTeamByCode(teamCode);
-    if (team == null) return false;
-    return joinTeam(team);
-  }
-
-  Future<List<Team>> searchTeamsByName(String keyword) async {
-    final query = keyword.trim();
-    if (query.length < 3) return const [];
-
-    await Future<void>.delayed(const Duration(milliseconds: 400));
-
-    return kMockJoinableTeams
-        .where((team) => team.name.contains(query))
-        .toList();
+    final results = await searchTeamsByCode(teamCode);
+    if (results.length != 1) return false;
+    return joinTeam(results.first);
   }
 
   Future<bool> joinTeam(Team team) async {
-    await Future<void>.delayed(const Duration(milliseconds: 200));
+    final token = accessToken.value.trim();
+    if (token.isEmpty) {
+      lastErrorMessage.value = '请先登录';
+      return false;
+    }
 
-    if (!teams.any((item) => item.id == team.id)) {
-      teams.add(team);
+    lastErrorMessage.value = '';
+    try {
+      final response = await Get.find<SpaceApiService>().addTeamMember(
+        accessToken: token,
+        spaceId: team.id,
+      );
+      if (!response.isSuccess) {
+        lastErrorMessage.value = response.msg ?? '加入团队失败';
+        return false;
+      }
+
+      if (!teams.any((item) => item.id == team.id)) {
+        teams.add(team);
+      }
+      activeTeam.value = team;
+      workMode.value = WorkMode.team;
+      if (Get.isRegistered<TeamWorkspaceService>()) {
+        final workspace = Get.find<TeamWorkspaceService>();
+        workspace.ensureTeamInitialized(team, this);
+        unawaited(workspace.fetchTeamMembers(teamId: team.id, auth: this));
+      }
+      return true;
+    } catch (_) {
+      lastErrorMessage.value = '网络异常，请稍后重试';
+      return false;
     }
-    activeTeam.value = team;
-    workMode.value = WorkMode.team;
-    if (Get.isRegistered<TeamWorkspaceService>()) {
-      Get.find<TeamWorkspaceService>().ensureTeamInitialized(team, this);
-    }
-    return true;
   }
 
   String _generateTeamCode() {

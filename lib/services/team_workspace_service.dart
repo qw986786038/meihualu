@@ -1,8 +1,11 @@
+import 'dart:async' show unawaited;
+
 import 'package:getx_plus/getx_plus.dart';
 import 'package:watermark_camera/models/team.dart';
 import 'package:watermark_camera/models/team_album_photo.dart';
 import 'package:watermark_camera/models/team_member.dart';
 import 'package:watermark_camera/services/auth_service.dart';
+import 'package:watermark_camera/services/space_api_service.dart';
 
 class TeamPhotoFeedItem {
   const TeamPhotoFeedItem({
@@ -76,21 +79,55 @@ class TeamWorkspaceService extends GetxService {
   }
 
   void ensureTeamInitialized(Team team, AuthService auth) {
-    if (_membersByTeam.containsKey(team.id)) return;
+    if (_isMockTeam(team.id)) {
+      if (_membersByTeam.containsKey(team.id)) return;
 
-    final selfName = auth.userName.value;
-    final selfAvatar =
-        selfName.isNotEmpty ? selfName.substring(0, 1) : '我';
-    final self = TeamMember(
-      id: 'member_self_${auth.phone.value}',
-      name: selfName.isNotEmpty ? selfName : '我',
-      avatarText: selfAvatar,
-      isSelf: true,
-      role: TeamMemberRole.owner,
-    );
+      final selfName = auth.userName.value;
+      final selfAvatar =
+          selfName.isNotEmpty ? selfName.substring(0, 1) : '我';
+      final self = TeamMember(
+        id: 'member_self_${auth.phone.value}',
+        name: selfName.isNotEmpty ? selfName : '我',
+        avatarText: selfAvatar,
+        isSelf: true,
+        role: TeamMemberRole.owner,
+      );
 
-    final mockMembers = _mockMembersForTeam(team);
-    _membersByTeam[team.id] = [self, ...mockMembers];
+      _membersByTeam[team.id] = [self, ..._mockMembersForTeam(team)];
+      return;
+    }
+
+    unawaited(fetchTeamMembers(teamId: team.id, auth: auth));
+  }
+
+  bool _isMockTeam(String teamId) {
+    return teamId.startsWith('mock_') || teamId == 'debug_team';
+  }
+
+  Future<bool> fetchTeamMembers({
+    required String teamId,
+    required AuthService auth,
+  }) async {
+    if (_isMockTeam(teamId)) return false;
+
+    final token = auth.accessToken.value.trim();
+    if (token.isEmpty) return false;
+
+    try {
+      final response = await Get.find<SpaceApiService>().teamMemberList(
+        accessToken: token,
+        spaceId: teamId,
+      );
+      if (!response.isSuccess) return false;
+
+      final selfUserId = auth.userId.value;
+      _membersByTeam[teamId] = response.rows
+          .map((info) => info.toTeamMember(selfUserId: selfUserId))
+          .toList();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   List<TeamMember> _mockMembersForTeam(Team team) {

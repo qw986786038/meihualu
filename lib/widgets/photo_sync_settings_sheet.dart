@@ -33,12 +33,6 @@ class PhotoSyncSettingsSheet extends StatelessWidget {
 
   AuthService get _auth => Get.find<AuthService>();
 
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature功能开发中，敬请期待')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
@@ -64,8 +58,8 @@ class PhotoSyncSettingsSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Obx(() {
-                  final team = _auth.activeTeam.value;
-                  if (!_auth.hasTeam || team == null) {
+                  final teams = _auth.teams;
+                  if (teams.isEmpty) {
                     return const SizedBox.shrink();
                   }
 
@@ -84,85 +78,33 @@ class PhotoSyncSettingsSheet extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: InkWell(
-                                    onTap: () {
+                            ...List.generate(teams.length, (index) {
+                              final team = teams[index];
+                              return Column(
+                                children: [
+                                  if (index > 0)
+                                    Divider(
+                                      height: 1,
+                                      color: Colors.grey.shade200,
+                                    ),
+                                  _TeamSyncRow(
+                                    team: team,
+                                    onOpen: () {
                                       Navigator.pop(context);
                                       context.push(
                                         AppPaths.teamWorkspace,
                                         extra: team.id,
                                       );
                                     },
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Row(
-                                      children: [
-                                        _TeamBrandBadge(team: team),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Flexible(
-                                                    child: Text(
-                                                      team.name,
-                                                      style: const TextStyle(
-                                                        fontSize: 16,
-                                                        fontWeight: FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  Icon(
-                                                    Icons.chevron_right,
-                                                    size: 20,
-                                                    color: Colors.grey.shade500,
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 2),
-                                              GestureDetector(
-                                                onTap: () => _showComingSoon(
-                                                  context,
-                                                  '企微/钉钉/飞书转发',
-                                                ),
-                                                child: Text.rich(
-                                                  TextSpan(
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: Colors.grey.shade500,
-                                                    ),
-                                                    children: const [
-                                                      TextSpan(
-                                                        text: '同时转发企微/钉钉/飞书 | ',
-                                                      ),
-                                                      TextSpan(
-                                                        text: '去开启 >',
-                                                        style: TextStyle(
-                                                          color: Color(0xFF1677FF),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
+                                    onSyncChanged: (enabled) =>
+                                        _auth.setTeamSyncEnabled(
+                                      enabled,
+                                      teamId: team.id,
                                     ),
                                   ),
-                                ),
-                                Switch.adaptive(
-                                  value: team.syncEnabled,
-                                  activeTrackColor: const Color(0xFF34C759),
-                                  onChanged: _auth.setTeamSyncEnabled,
-                                ),
-                              ],
-                            ),
+                                ],
+                              );
+                            }),
                           ],
                         ),
                       ),
@@ -436,6 +378,63 @@ class _AvatarBadge extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
+    );
+  }
+}
+
+class _TeamSyncRow extends StatelessWidget {
+  const _TeamSyncRow({
+    required this.team,
+    required this.onOpen,
+    required this.onSyncChanged,
+  });
+
+  final Team team;
+  final VoidCallback onOpen;
+  final ValueChanged<bool> onSyncChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            onTap: onOpen,
+            borderRadius: BorderRadius.circular(8),
+            child: Row(
+              children: [
+                _TeamBrandBadge(team: team),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          team.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 20,
+                        color: Colors.grey.shade500,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Switch.adaptive(
+          value: team.syncEnabled,
+          activeTrackColor: const Color(0xFF34C759),
+          onChanged: onSyncChanged,
+        ),
+      ],
     );
   }
 }
