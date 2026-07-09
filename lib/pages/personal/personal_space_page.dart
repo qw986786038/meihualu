@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +6,8 @@ import 'package:watermark_camera/models/personal_space.dart';
 import 'package:watermark_camera/router/app_paths.dart';
 import 'package:watermark_camera/services/auth_service.dart';
 import 'package:watermark_camera/services/personal_space_service.dart';
+import 'package:watermark_camera/utils/space_media_downloader.dart';
+import 'package:watermark_camera/utils/space_media_image.dart';
 import 'package:watermark_camera/widgets/work_mode_switch_sheet.dart';
 
 class PersonalSpacePage extends StatefulWidget {
@@ -35,6 +35,18 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
   void initState() {
     super.initState();
     _auth.setWorkMode(WorkMode.personal);
+    _loadMedia();
+  }
+
+  Future<void> _loadMedia() async {
+    if (!_auth.isLoggedIn.value) return;
+    final spaceId = _auth.personalSpace.value?.id;
+    final token = _auth.accessToken.value.trim();
+    if (spaceId == null || spaceId.isEmpty || token.isEmpty) return;
+    await _personalService.fetchMediaList(
+      spaceId: spaceId,
+      accessToken: token,
+    );
   }
 
   void _showComingSoon(String feature) {
@@ -90,6 +102,11 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
             _buildHeader(),
             Expanded(
               child: Obx(() {
+                if (_personalService.isLoadingMedia.value &&
+                    _personalService.photosForSpace(_space.id).isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
                 final photos = _personalService.photosForSpace(_space.id);
                 final syncedPhotos =
                     photos.where((photo) => photo.filePath.isNotEmpty).toList();
@@ -220,11 +237,21 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
   }
 
   Future<void> _openUploadPicker() async {
-    await context.push<bool>(AppPaths.personalSpaceUpload);
+    final spaceId = _auth.personalSpace.value?.id ?? _space.id;
+    if (spaceId.isEmpty || spaceId == 'debug_personal') {
+      _showComingSoon('上传照片');
+      return;
+    }
+    await context.push<bool>(AppPaths.personalSpaceUpload, extra: spaceId);
   }
 
   Future<void> _openBatchPicker() async {
-    await context.push<bool>(AppPaths.personalSpaceBatch);
+    final spaceId = _auth.personalSpace.value?.id ?? _space.id;
+    if (spaceId.isEmpty || spaceId == 'debug_personal') {
+      _showComingSoon('批量操作');
+      return;
+    }
+    await context.push<bool>(AppPaths.personalSpaceBatch, extra: spaceId);
   }
 
   Widget _buildQuickActions() {
@@ -439,23 +466,48 @@ class _PersonalPhotoTile extends StatelessWidget {
 
   final PersonalAlbumPhoto photo;
 
+  Future<void> _download(BuildContext context) async {
+    final url = photo.downloadUrl;
+    if (url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('暂无可下载的文件')),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('正在下载...')));
+
+    final success = await SpaceMediaDownloader.downloadToGallery(
+      ossUrl: url,
+      isVideo: photo.isVideo,
+      fileName: photo.fileName,
+    );
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(success ? '已保存到相册' : '下载失败，请稍后重试'),
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final file = File(photo.filePath);
-    final hasFile = photo.filePath.isNotEmpty && file.existsSync();
-
-    return ClipRRect(
+    return GestureDetector(
+      onLongPress: () => _download(context),
+      child: ClipRRect(
       borderRadius: BorderRadius.circular(6),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (hasFile)
-            Image.file(file, fit: BoxFit.cover)
-          else
-            Container(
-              color: const Color(0xFF2F2F2F),
-              alignment: Alignment.center,
-              child: Icon(Icons.photo_camera_outlined, color: Colors.grey.shade500, size: 36),
+          SpaceMediaImage(url: photo.filePath),
+          if (photo.isVideo)
+            const Center(
+              child: Icon(Icons.play_circle_fill, color: Colors.white, size: 40),
             ),
           Positioned(
             left: 8,
@@ -465,6 +517,7 @@ class _PersonalPhotoTile extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }
@@ -477,10 +530,14 @@ class _PhotoWatermarkOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final time = photo.capturedAt;
-    final hour = time.hour.toString().padLeft(2, '0');
-    final minute = time.minute.toString().padLeft(2, '0');
+    final watermarkTime = photo.watermarkTime;
+    final displayTime = watermarkTime != null && watermarkTime.isNotEmpty
+        ? _formatWatermarkTime(watermarkTime, time)
+        : time;
+    final hour = displayTime.hour.toString().padLeft(2, '0');
+    final minute = displayTime.minute.toString().padLeft(2, '0');
     final weekdays = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'];
-    final weekday = weekdays[time.weekday - 1];
+    final weekday = weekdays[displayTime.weekday - 1];
 
     return Container(
       padding: const EdgeInsets.all(8),
@@ -503,7 +560,7 @@ class _PhotoWatermarkOverlay extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${time.year}-${time.month.toString().padLeft(2, '0')}-${time.day.toString().padLeft(2, '0')} $weekday 多云 高温 35°C',
+            '${displayTime.year}-${displayTime.month.toString().padLeft(2, '0')}-${displayTime.day.toString().padLeft(2, '0')} $weekday',
             style: const TextStyle(color: Colors.white, fontSize: 10, height: 1.3),
           ),
           if (photo.location != null) ...[
@@ -518,5 +575,10 @@ class _PhotoWatermarkOverlay extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  DateTime _formatWatermarkTime(String watermarkTime, DateTime fallback) {
+    final normalized = watermarkTime.replaceFirst(' ', 'T');
+    return DateTime.tryParse(normalized) ?? fallback;
   }
 }

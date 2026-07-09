@@ -11,6 +11,8 @@ import 'package:watermark_camera/pages/team/team_member_profile_page.dart';
 import 'package:watermark_camera/router/app_paths.dart';
 import 'package:watermark_camera/services/auth_service.dart';
 import 'package:watermark_camera/services/team_workspace_service.dart';
+import 'package:watermark_camera/utils/space_media_downloader.dart';
+import 'package:watermark_camera/utils/space_media_image.dart';
 import 'package:watermark_camera/widgets/team_date_filter_sheet.dart';
 import 'package:watermark_camera/widgets/team_member_filter_sheet.dart';
 import 'package:watermark_camera/widgets/work_mode_switch_sheet.dart';
@@ -65,7 +67,15 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
         _auth.activeTeam.value = team;
       }
       _auth.setWorkMode(WorkMode.team);
+      _loadTeamMedia(team.id);
     }
+  }
+
+  Future<void> _loadTeamMedia(String teamId) async {
+    if (!_auth.isLoggedIn.value) return;
+    final token = _auth.accessToken.value.trim();
+    if (token.isEmpty || teamId.isEmpty) return;
+    await _workspace.fetchTeamMedia(teamId: teamId, accessToken: token);
   }
 
   @override
@@ -169,6 +179,51 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
     await context.push(AppPaths.teamWatermarkTemplates, extra: team);
   }
 
+  Future<void> _downloadTeamPhotos() async {
+    final team = _team;
+    if (team == null) return;
+
+    final photos = _workspace.photosForTeam(team.id);
+    final items = photos
+        .where((photo) => photo.downloadUrl.isNotEmpty)
+        .map(
+          (photo) => SpaceMediaDownloadItem(
+            url: photo.downloadUrl,
+            isVideo: photo.isVideo,
+            fileName: photo.fileName,
+          ),
+        )
+        .toList();
+    if (items.isEmpty) {
+      _showComingSoon('暂无照片可下载');
+      return;
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text('正在下载 ${items.length} 个文件...')),
+      );
+
+    final successCount = await SpaceMediaDownloader.downloadMany(items);
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text('已成功保存 $successCount 个到相册')),
+      );
+  }
+
+  Future<void> _openUploadPicker() async {
+    final team = _team;
+    if (team == null || team.id.isEmpty || team.id == 'debug_team') {
+      _showComingSoon('上传照片');
+      return;
+    }
+    await context.push<bool>(AppPaths.teamSpaceUpload, extra: team.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     final team = _team!;
@@ -196,6 +251,7 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
             onViewRecentPhotosTap: _viewRecentPhotos,
             onPhotoLedgerTap: _openPhotoLedger,
             onTeamWatermarkTap: _openTeamWatermarkTemplates,
+            onUploadPhotosTap: _openUploadPicker,
             onSwitchModeTap: _openWorkModeSwitchSheet,
             onComingSoon: _showComingSoon,
           ),
@@ -208,6 +264,8 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
           ),
           _TeamWorkbenchTab(
             onSearchPhotosTap: _openPhotoSearch,
+            onUploadPhotosTap: _openUploadPicker,
+            onDownloadPhotosTap: _downloadTeamPhotos,
             onComingSoon: _showComingSoon,
           ),
           _TeamManageTab(
@@ -271,6 +329,7 @@ class _WorkCircleTab extends StatelessWidget {
     required this.onViewRecentPhotosTap,
     required this.onPhotoLedgerTap,
     required this.onTeamWatermarkTap,
+    required this.onUploadPhotosTap,
     required this.onSwitchModeTap,
     required this.onComingSoon,
   });
@@ -287,6 +346,7 @@ class _WorkCircleTab extends StatelessWidget {
   final VoidCallback onViewRecentPhotosTap;
   final VoidCallback onPhotoLedgerTap;
   final VoidCallback onTeamWatermarkTap;
+  final VoidCallback onUploadPhotosTap;
   final VoidCallback onSwitchModeTap;
   final void Function(String feature) onComingSoon;
 
@@ -308,6 +368,7 @@ class _WorkCircleTab extends StatelessWidget {
           onComingSoon: onComingSoon,
           onPhotoLedgerTap: onPhotoLedgerTap,
           onTeamWatermarkTap: onTeamWatermarkTap,
+          onUploadPhotosTap: onUploadPhotosTap,
         ),
         Expanded(
           child: ColoredBox(
@@ -378,6 +439,7 @@ class _TeamHeader extends StatelessWidget {
     required this.onComingSoon,
     required this.onPhotoLedgerTap,
     required this.onTeamWatermarkTap,
+    required this.onUploadPhotosTap,
   });
 
   final Team team;
@@ -390,6 +452,7 @@ class _TeamHeader extends StatelessWidget {
   final void Function(String feature) onComingSoon;
   final VoidCallback onPhotoLedgerTap;
   final VoidCallback onTeamWatermarkTap;
+  final VoidCallback onUploadPhotosTap;
 
   @override
   Widget build(BuildContext context) {
@@ -474,6 +537,7 @@ class _TeamHeader extends StatelessWidget {
               onComingSoon: onComingSoon,
               onPhotoLedgerTap: onPhotoLedgerTap,
               onTeamWatermarkTap: onTeamWatermarkTap,
+              onUploadPhotosTap: onUploadPhotosTap,
             ),
           ],
         ),
@@ -590,11 +654,13 @@ class _WorkCircleQuickActions extends StatelessWidget {
     required this.onComingSoon,
     required this.onPhotoLedgerTap,
     required this.onTeamWatermarkTap,
+    required this.onUploadPhotosTap,
   });
 
   final void Function(String feature) onComingSoon;
   final VoidCallback onPhotoLedgerTap;
   final VoidCallback onTeamWatermarkTap;
+  final VoidCallback onUploadPhotosTap;
 
   @override
   Widget build(BuildContext context) {
@@ -619,7 +685,7 @@ class _WorkCircleQuickActions extends StatelessWidget {
           const SizedBox(width: 8),
           _WorkCircleQuickActionChip(
             label: '上传照片',
-            onTap: () => onComingSoon('上传照片'),
+            onTap: onUploadPhotosTap,
           ),
           const SizedBox(width: 8),
           _WorkCircleQuickActionChip(
@@ -1061,22 +1127,59 @@ class _PhotoGrid extends StatelessWidget {
       ),
       itemBuilder: (context, index) {
         final photo = photos[index];
-        final path = photo.filePath;
-        final file = File(path);
-        if (!file.existsSync()) {
-          return Container(
-            color: Colors.grey.shade200,
-            alignment: Alignment.center,
-            child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade500),
-          );
-        }
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: Image.file(file, fit: BoxFit.cover),
+        return GestureDetector(
+          onLongPress: () => _downloadPhoto(context, photo),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                SpaceMediaImage(
+                  url: photo.filePath,
+                  placeholderColor: Colors.grey.shade200,
+                ),
+                if (photo.isVideo)
+                  const Center(
+                    child: Icon(
+                      Icons.play_circle_fill,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  ),
+              ],
+            ),
+          ),
         );
       },
     );
   }
+}
+
+Future<void> _downloadPhoto(BuildContext context, TeamAlbumPhoto photo) async {
+  final url = photo.downloadUrl;
+  if (url.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('暂无可下载的文件')),
+    );
+    return;
+  }
+
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(const SnackBar(content: Text('正在下载...')));
+
+  final success = await SpaceMediaDownloader.downloadToGallery(
+    ossUrl: url,
+    isVideo: photo.isVideo,
+    fileName: photo.fileName,
+  );
+  if (!context.mounted) return;
+
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(content: Text(success ? '已保存到相册' : '下载失败，请稍后重试')),
+    );
 }
 
 class _FeedAction extends StatelessWidget {
@@ -1510,10 +1613,14 @@ class _MembersManageBanner extends StatelessWidget {
 class _TeamWorkbenchTab extends StatefulWidget {
   const _TeamWorkbenchTab({
     required this.onSearchPhotosTap,
+    required this.onUploadPhotosTap,
+    required this.onDownloadPhotosTap,
     required this.onComingSoon,
   });
 
   final VoidCallback onSearchPhotosTap;
+  final VoidCallback onUploadPhotosTap;
+  final VoidCallback onDownloadPhotosTap;
   final void Function(String feature) onComingSoon;
 
   @override
@@ -1534,7 +1641,7 @@ class _TeamWorkbenchTabState extends State<_TeamWorkbenchTab> {
           label: '照片批量下载',
           icon: Icons.download_outlined,
           iconColor: _primaryBlue,
-          onTap: () => widget.onComingSoon('照片批量下载'),
+          onTap: widget.onDownloadPhotosTap,
         ),
       ],
     ),
@@ -1551,7 +1658,7 @@ class _TeamWorkbenchTabState extends State<_TeamWorkbenchTab> {
           label: '上传照片',
           icon: Icons.cloud_upload_outlined,
           iconColor: _primaryBlue,
-          onTap: () => widget.onComingSoon('上传照片'),
+          onTap: widget.onUploadPhotosTap,
         ),
         _WorkbenchFeatureItem(
           label: '照片搜索',
@@ -1575,7 +1682,7 @@ class _TeamWorkbenchTabState extends State<_TeamWorkbenchTab> {
           label: '照片批量下载',
           icon: Icons.download_outlined,
           iconColor: _primaryBlue,
-          onTap: () => widget.onComingSoon('照片批量下载'),
+          onTap: widget.onDownloadPhotosTap,
         ),
         _WorkbenchFeatureItem(
           label: '照片查看码',

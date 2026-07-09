@@ -6,6 +6,10 @@ class Team {
     required this.teamCode,
     this.brandImagePath,
     this.syncEnabled = true,
+    this.photoNum = 0,
+    this.todayUploadNum = 0,
+    this.todayUploadPersonNum = 0,
+    this.todaySelfUploadNum = 0,
   });
 
   final String id;
@@ -14,6 +18,10 @@ class Team {
   final String teamCode;
   final String? brandImagePath;
   final bool syncEnabled;
+  final int photoNum;
+  final int todayUploadNum;
+  final int todayUploadPersonNum;
+  final int todaySelfUploadNum;
 
   Team copyWith({
     String? id,
@@ -22,6 +30,10 @@ class Team {
     String? teamCode,
     String? brandImagePath,
     bool? syncEnabled,
+    int? photoNum,
+    int? todayUploadNum,
+    int? todayUploadPersonNum,
+    int? todaySelfUploadNum,
   }) {
     return Team(
       id: id ?? this.id,
@@ -30,6 +42,10 @@ class Team {
       teamCode: teamCode ?? this.teamCode,
       brandImagePath: brandImagePath ?? this.brandImagePath,
       syncEnabled: syncEnabled ?? this.syncEnabled,
+      photoNum: photoNum ?? this.photoNum,
+      todayUploadNum: todayUploadNum ?? this.todayUploadNum,
+      todayUploadPersonNum: todayUploadPersonNum ?? this.todayUploadPersonNum,
+      todaySelfUploadNum: todaySelfUploadNum ?? this.todaySelfUploadNum,
     );
   }
 }

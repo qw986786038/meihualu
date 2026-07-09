@@ -4,8 +4,10 @@ import 'package:getx_plus/getx_plus.dart';
 import 'package:watermark_camera/models/team.dart';
 import 'package:watermark_camera/models/team_album_photo.dart';
 import 'package:watermark_camera/models/team_member.dart';
+import 'package:watermark_camera/models/api/space_batch_upload_data.dart';
 import 'package:watermark_camera/services/auth_service.dart';
 import 'package:watermark_camera/services/space_api_service.dart';
+import 'package:watermark_camera/services/space_media_service.dart';
 
 class TeamPhotoFeedItem {
   const TeamPhotoFeedItem({
@@ -21,6 +23,7 @@ class TeamWorkspaceService extends GetxService {
   final RxMap<String, List<TeamMember>> _membersByTeam =
       <String, List<TeamMember>>{}.obs;
   final RxList<TeamAlbumPhoto> teamPhotos = <TeamAlbumPhoto>[].obs;
+  final RxBool isLoadingMedia = false.obs;
 
   List<TeamMember> membersForTeam(String teamId) {
     return List<TeamMember>.from(_membersByTeam[teamId] ?? const []);
@@ -102,6 +105,58 @@ class TeamWorkspaceService extends GetxService {
 
   bool _isMockTeam(String teamId) {
     return teamId.startsWith('mock_') || teamId == 'debug_team';
+  }
+
+  Future<bool> fetchTeamMedia({
+    required String teamId,
+    required String accessToken,
+  }) async {
+    if (_isMockTeam(teamId)) return false;
+    if (teamId.isEmpty || accessToken.isEmpty) return false;
+
+    isLoadingMedia.value = true;
+    try {
+      final response = await Get.find<SpaceApiService>().getMediaList(
+        accessToken: accessToken,
+        spaceId: teamId,
+      );
+      if (!response.isSuccess || response.data == null) return false;
+
+      teamPhotos.removeWhere((photo) => photo.teamId == teamId);
+      teamPhotos.addAll(
+        response.data!.allFiles
+            .where((file) => file.id.isNotEmpty)
+            .map((file) => file.toTeamAlbumPhoto(teamId)),
+      );
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      isLoadingMedia.value = false;
+    }
+  }
+
+  Future<SpaceBatchUploadData?> batchUploadMedia({
+    required String teamId,
+    required String accessToken,
+    required List<String> filePaths,
+    List<DateTime>? captureTimes,
+  }) async {
+    isLoadingMedia.value = true;
+    try {
+      final result = await Get.find<SpaceMediaService>().batchUploadMedia(
+        spaceId: teamId,
+        accessToken: accessToken,
+        filePaths: filePaths,
+        captureTimes: captureTimes,
+      );
+      if (result != null && result.successCount > 0) {
+        await fetchTeamMedia(teamId: teamId, accessToken: accessToken);
+      }
+      return result;
+    } finally {
+      isLoadingMedia.value = false;
+    }
   }
 
   Future<bool> fetchTeamMembers({

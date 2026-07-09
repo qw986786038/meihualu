@@ -10,20 +10,26 @@ const String kDefaultWatermarkTemplateId = 'classic';
 class WatermarkTemplatePreset {
   const WatermarkTemplatePreset({
     required this.id,
+    required this.backendId,
     required this.title,
     required this.badge,
   });
 
   final String id;
+  final int backendId;
   final String title;
   final String badge;
 }
 
 const List<WatermarkTemplatePreset> kWatermarkTemplatePresets = [
-  WatermarkTemplatePreset(id: 'classic', title: '经典水印', badge: '现场'),
-  WatermarkTemplatePreset(id: 'panel', title: '卡片水印', badge: '记录'),
-  WatermarkTemplatePreset(id: 'minimal', title: '极简水印', badge: '定位'),
+  WatermarkTemplatePreset(id: 'classic', backendId: 1, title: '经典水印', badge: '现场'),
+  WatermarkTemplatePreset(id: 'panel', backendId: 2, title: '卡片水印', badge: '记录'),
+  WatermarkTemplatePreset(id: 'minimal', backendId: 3, title: '极简水印', badge: '定位'),
 ];
+
+int watermarkBackendId(String? id) {
+  return watermarkTemplateById(id).backendId;
+}
 
 WatermarkTemplatePreset watermarkTemplateById(String? id) {
   for (final preset in kWatermarkTemplatePresets) {

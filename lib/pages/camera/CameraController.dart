@@ -154,6 +154,7 @@ class CameraController extends GetxController {
           output.path,
           isVideo: type == CameraxCaptureType.video,
           location: _locationService.watermarkAddress.value,
+          captureTime: DateTime.now(),
         );
       }
     }

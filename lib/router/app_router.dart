@@ -234,6 +234,14 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: AppPaths.teamSpaceUpload,
+      name: 'teamSpaceUpload',
+      builder: (BuildContext context, GoRouterState state) {
+        final spaceId = state.extra is String ? state.extra as String : null;
+        return PersonalSpaceUploadPickerPage(spaceId: spaceId);
+      },
+    ),
+    GoRoute(
       path: AppPaths.personalSpace,
       name: 'personalSpace',
       builder: (BuildContext context, GoRouterState state) =>
@@ -242,18 +250,24 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppPaths.personalSpaceUpload,
       name: 'personalSpaceUpload',
-      builder: (BuildContext context, GoRouterState state) =>
-          const PersonalSpaceUploadPickerPage(
-            mode: PersonalSpacePickerMode.upload,
-          ),
+      builder: (BuildContext context, GoRouterState state) {
+        final spaceId = state.extra is String ? state.extra as String : null;
+        return PersonalSpaceUploadPickerPage(
+          spaceId: spaceId,
+          mode: PersonalSpacePickerMode.upload,
+        );
+      },
     ),
     GoRoute(
       path: AppPaths.personalSpaceBatch,
       name: 'personalSpaceBatch',
-      builder: (BuildContext context, GoRouterState state) =>
-          const PersonalSpaceUploadPickerPage(
-            mode: PersonalSpacePickerMode.batch,
-          ),
+      builder: (BuildContext context, GoRouterState state) {
+        final spaceId = state.extra is String ? state.extra as String : null;
+        return PersonalSpaceUploadPickerPage(
+          spaceId: spaceId,
+          mode: PersonalSpacePickerMode.batch,
+        );
+      },
     ),
     GoRoute(
       path: AppPaths.mediaGallery,

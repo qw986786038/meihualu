@@ -53,7 +53,7 @@ Future<void> showWorkModeSwitchSheet(
   });
 }
 
-class WorkModeSwitchSheet extends StatelessWidget {
+class WorkModeSwitchSheet extends StatefulWidget {
   const WorkModeSwitchSheet({
     super.key,
     this.currentTeam,
@@ -63,9 +63,22 @@ class WorkModeSwitchSheet extends StatelessWidget {
   final Team? currentTeam;
   final WorkspaceContext currentWorkspace;
 
+  @override
+  State<WorkModeSwitchSheet> createState() => _WorkModeSwitchSheetState();
+}
+
+class _WorkModeSwitchSheetState extends State<WorkModeSwitchSheet> {
   AuthService get _auth => Get.find<AuthService>();
   TeamWorkspaceService get _workspace => Get.find<TeamWorkspaceService>();
   PersonalSpaceService get _personalService => Get.find<PersonalSpaceService>();
+
+  @override
+  void initState() {
+    super.initState();
+    if (_auth.isLoggedIn.value) {
+      _auth.fetchSpaceList();
+    }
+  }
 
   void _showComingSoon(BuildContext context, String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -96,7 +109,7 @@ class WorkModeSwitchSheet extends StatelessWidget {
     final router = GoRouter.of(context);
     final currentPath = router.state.uri.path;
     final isSameTeamWorkspace =
-        currentWorkspace == WorkspaceContext.team &&
+        widget.currentWorkspace == WorkspaceContext.team &&
         currentPath == AppPaths.teamWorkspace &&
         (_auth.activeTeam.value?.id ?? team.id) == team.id;
     if (isSameTeamWorkspace) return;
@@ -115,7 +128,7 @@ class WorkModeSwitchSheet extends StatelessWidget {
 
     final router = GoRouter.of(context);
     final currentPath = router.state.uri.path;
-    if (currentWorkspace == WorkspaceContext.personal &&
+    if (widget.currentWorkspace == WorkspaceContext.personal &&
         currentPath == AppPaths.personalSpace) {
       return;
     }
@@ -129,6 +142,9 @@ class WorkModeSwitchSheet extends StatelessWidget {
   }
 
   String _teamSubtitle(Team team) {
+    if (team.photoNum > 0 || team.todayUploadPersonNum > 0) {
+      return '今天${team.todayUploadPersonNum}人已拍照，共${team.photoNum}张';
+    }
     final photos = _workspace.photosForTeam(team.id);
     final now = DateTime.now();
     final todayPhotos = photos.where((photo) => _isSameDay(photo.capturedAt, now));
@@ -156,18 +172,18 @@ class WorkModeSwitchSheet extends StatelessWidget {
   }
 
   bool _isTeamSelected(Team team) {
-    if (currentWorkspace == WorkspaceContext.personal) return false;
-    if (currentWorkspace == WorkspaceContext.camera &&
+    if (widget.currentWorkspace == WorkspaceContext.personal) return false;
+    if (widget.currentWorkspace == WorkspaceContext.camera &&
         _auth.workMode.value != WorkMode.team) {
       return false;
     }
-    final activeId = _auth.activeTeam.value?.id ?? currentTeam?.id;
+    final activeId = _auth.activeTeam.value?.id ?? widget.currentTeam?.id;
     return activeId == team.id;
   }
 
   bool get _isPersonalSelected {
-    if (currentWorkspace == WorkspaceContext.personal) return true;
-    if (currentWorkspace == WorkspaceContext.camera) {
+    if (widget.currentWorkspace == WorkspaceContext.personal) return true;
+    if (widget.currentWorkspace == WorkspaceContext.camera) {
       return _auth.workMode.value == WorkMode.personal;
     }
     return false;
@@ -176,6 +192,7 @@ class WorkModeSwitchSheet extends StatelessWidget {
   int _personalPhotoCount() {
     final space = _personalSpace;
     if (space == null) return 0;
+    if (space.photoNum > 0) return space.photoNum;
     return _personalService
         .photosForSpace(space.id)
         .where((photo) => photo.filePath.isNotEmpty)
@@ -197,8 +214,8 @@ class WorkModeSwitchSheet extends StatelessWidget {
           child: Obx(() {
             final teams = _auth.teams.isNotEmpty
                 ? _auth.teams
-                : currentTeam != null
-                    ? [currentTeam!]
+                : widget.currentTeam != null
+                    ? [widget.currentTeam!]
                     : <Team>[];
             final personalSpace = _personalSpace;
 

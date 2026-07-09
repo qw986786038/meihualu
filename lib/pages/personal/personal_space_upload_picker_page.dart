@@ -7,15 +7,18 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:watermark_camera/pages/personal/personal_space_upload_controller.dart';
 import 'package:watermark_camera/services/auth_service.dart';
 import 'package:watermark_camera/services/personal_space_service.dart';
+import 'package:watermark_camera/services/team_workspace_service.dart';
 
 const Color _kPrimaryBlue = Color(0xFF1677FF);
 
 class PersonalSpaceUploadPickerPage extends StatefulWidget {
   const PersonalSpaceUploadPickerPage({
     super.key,
+    this.spaceId,
     this.mode = PersonalSpacePickerMode.upload,
   });
 
+  final String? spaceId;
   final PersonalSpacePickerMode mode;
 
   @override
@@ -31,6 +34,46 @@ class _PersonalSpaceUploadPickerPageState
 
   AuthService get _auth => Get.find<AuthService>();
   PersonalSpaceService get _personalService => Get.find<PersonalSpaceService>();
+  TeamWorkspaceService get _teamService => Get.find<TeamWorkspaceService>();
+
+  String? get _targetSpaceId {
+    final configured = widget.spaceId?.trim();
+    if (configured != null && configured.isNotEmpty) return configured;
+    return _auth.personalSpace.value?.id;
+  }
+
+  bool _isPersonalSpace(String spaceId) {
+    return _auth.personalSpace.value?.id == spaceId;
+  }
+
+  bool _isTeamSpace(String spaceId) {
+    for (final team in _auth.teams) {
+      if (team.id == spaceId) return true;
+    }
+    return false;
+  }
+
+  Future<dynamic> _batchUpload({
+    required String spaceId,
+    required String accessToken,
+    required List<String> filePaths,
+    required List<DateTime> captureTimes,
+  }) {
+    if (_isPersonalSpace(spaceId)) {
+      return _personalService.batchUploadMedia(
+        spaceId: spaceId,
+        accessToken: accessToken,
+        filePaths: filePaths,
+        captureTimes: captureTimes,
+      );
+    }
+    return _teamService.batchUploadMedia(
+      teamId: spaceId,
+      accessToken: accessToken,
+      filePaths: filePaths,
+      captureTimes: captureTimes,
+    );
+  }
 
   @override
   void dispose() {
@@ -61,26 +104,68 @@ class _PersonalSpaceUploadPickerPageState
       return;
     }
 
-    final space = resolvePersonalSpace(_auth);
+    final token = _auth.accessToken.value.trim();
+    if (!_auth.isLoggedIn.value || token.isEmpty) {
+      _showSnack('请先登录后再上传');
+      return;
+    }
+
+    final spaceId = _targetSpaceId;
+    if (spaceId == null || spaceId.isEmpty) {
+      _showSnack('空间未就绪，请稍后重试');
+      return;
+    }
+    if (spaceId == 'debug_personal' || spaceId == 'debug_team') {
+      _showSnack('空间未就绪，请稍后重试');
+      return;
+    }
+    if (!_isPersonalSpace(spaceId) && !_isTeamSpace(spaceId)) {
+      _showSnack('空间未就绪，请稍后重试');
+      return;
+    }
+
     setState(() => _isUploading = true);
     try {
-      var uploaded = 0;
+      final filePaths = <String>[];
+      final captureTimes = <DateTime>[];
       for (final asset in assets) {
         final file = await asset.file;
         if (file == null) continue;
-        _personalService.addPhoto(
-          personalSpaceId: space.id,
-          filePath: file.path,
-          capturedAt: asset.createDateTime,
-          isVideo: asset.type == AssetType.video,
-        );
-        uploaded++;
+        filePaths.add(file.path);
+        captureTimes.add(asset.createDateTime);
       }
 
-      if (!mounted) return;
-      if (uploaded == 0) {
+      if (filePaths.isEmpty) {
         _showSnack('上传失败，请重试');
         return;
+      }
+
+      final result = await _batchUpload(
+        spaceId: spaceId,
+        accessToken: token,
+        filePaths: filePaths,
+        captureTimes: captureTimes,
+      );
+
+      if (!mounted) return;
+      if (result == null) {
+        _showSnack('上传失败，请稍后重试');
+        return;
+      }
+
+      if (result.successCount <= 0) {
+        final message = result.failures.isNotEmpty &&
+                result.failures.first.errorMsg?.isNotEmpty == true
+            ? result.failures.first.errorMsg!
+            : '上传失败，请稍后重试';
+        _showSnack(message);
+        return;
+      }
+
+      if (result.failCount > 0) {
+        _showSnack('成功 ${result.successCount} 个，失败 ${result.failCount} 个');
+      } else {
+        _showSnack('已成功上传 ${result.successCount} 个');
       }
       context.pop(true);
     } finally {

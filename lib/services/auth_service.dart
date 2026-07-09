@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:watermark_camera/models/api/api_response.dart';
 import 'package:watermark_camera/models/api/login_data.dart';
+import 'package:watermark_camera/models/api/space_list_data.dart';
 import 'package:watermark_camera/models/api/user_info.dart';
 import 'package:watermark_camera/models/personal_space.dart';
 import 'package:watermark_camera/models/team.dart';
@@ -57,8 +58,91 @@ class AuthService extends GetxService {
     userId.value = session.userId ?? '';
     phone.value = session.phone ?? '';
     isLoggedIn.value = true;
-    _ensurePersonalSpace();
     unawaited(fetchUserInfo());
+    unawaited(fetchSpaceList());
+  }
+
+  /// 查询个人空间与团队空间列表。
+  Future<bool> fetchSpaceList() async {
+    final token = accessToken.value.trim();
+    if (token.isEmpty) return false;
+
+    lastErrorMessage.value = '';
+    try {
+      final response = await Get.find<SpaceApiService>().getSpaceList(
+        accessToken: token,
+      );
+      if (!response.isSuccess || response.data == null) {
+        lastErrorMessage.value = response.msg ?? '获取空间列表失败';
+        return false;
+      }
+
+      _applySpaceList(response.data!);
+      return true;
+    } catch (_) {
+      lastErrorMessage.value = '网络异常，请稍后重试';
+      return false;
+    }
+  }
+
+  void _applySpaceList(SpaceListData data) {
+    if (data.userId.isNotEmpty) {
+      userId.value = data.userId;
+    }
+
+    final personalInfo = data.personalSpace;
+    if (personalInfo != null && personalInfo.spaceId.isNotEmpty) {
+      final existing = personalSpace.value;
+      final syncEnabled = existing?.id == personalInfo.spaceId
+          ? (existing?.syncEnabled ?? true)
+          : true;
+      personalSpace.value = _withPersonalSpaceDisplay(
+        personalInfo.toPersonalSpace(
+          syncEnabled: syncEnabled,
+        ),
+      );
+    }
+
+    final previousTeams = {for (final team in teams) team.id: team};
+    final nextTeams = data.teamSpace
+        .where((item) => item.spaceId.isNotEmpty)
+        .map((item) {
+          final existing = previousTeams[item.spaceId];
+          return item.toTeam(
+            syncEnabled: existing?.syncEnabled ?? true,
+          ).copyWith(
+            industryType: existing?.industryType ?? '',
+            teamCode: existing?.teamCode ?? '',
+          );
+        })
+        .toList();
+    teams.assignAll(nextTeams);
+
+    String? selectedTeamId;
+    for (final item in data.teamSpace) {
+      if (item.selected && item.spaceId.isNotEmpty) {
+        selectedTeamId = item.spaceId;
+        break;
+      }
+    }
+    if (selectedTeamId != null) {
+      activeTeam.value = _teamById(selectedTeamId);
+      workMode.value = WorkMode.team;
+    } else {
+      final currentId = activeTeam.value?.id;
+      activeTeam.value = currentId == null ? null : _teamById(currentId);
+      if (activeTeam.value == null && teams.isNotEmpty) {
+        activeTeam.value = teams.first;
+      }
+      if (activeTeam.value == null) {
+        workMode.value = WorkMode.personal;
+      }
+    }
+
+    final active = activeTeam.value;
+    if (active != null && Get.isRegistered<TeamWorkspaceService>()) {
+      Get.find<TeamWorkspaceService>().ensureTeamInitialized(active, this);
+    }
   }
 
   /// 查询当前用户资料。
@@ -89,7 +173,7 @@ class AuthService extends GetxService {
     userId.value = info.userId;
     phone.value = info.phone;
     userName.value = info.displayName;
-    _syncPersonalSpaceName(info.displayName);
+    _syncPersonalSpaceDisplay();
   }
 
   void updateLocalUserInfo(UserInfo info) {
@@ -130,12 +214,30 @@ class AuthService extends GetxService {
     }
   }
 
-  void _syncPersonalSpaceName(String name) {
+  void _syncPersonalSpaceDisplay() {
     final space = personalSpace.value;
     if (space == null) return;
-    final avatarText = name.isNotEmpty ? name.substring(0, 1) : '我';
-    personalSpace.value = space.copyWith(
-      name: '$avatarText的空间',
+    personalSpace.value = _withPersonalSpaceDisplay(space);
+  }
+
+  String _resolveNicknameForPersonalSpace() {
+    final nick = userInfo.value?.nickName?.trim();
+    if (nick != null && nick.isNotEmpty) return nick;
+
+    final name = userName.value.trim();
+    if (name.isNotEmpty) return name;
+
+    if (phone.value.length >= 4) {
+      return '用户${phone.value.substring(phone.value.length - 4)}';
+    }
+    return '我';
+  }
+
+  PersonalSpace _withPersonalSpaceDisplay(PersonalSpace space) {
+    final nickname = _resolveNicknameForPersonalSpace();
+    final avatarText = nickname.isNotEmpty ? nickname.substring(0, 1) : '我';
+    return space.copyWith(
+      name: '$avatarText的个人空间',
       avatarText: avatarText,
     );
   }
@@ -286,9 +388,9 @@ class AuthService extends GetxService {
             accessToken: accessToken,
           );
     isLoggedIn.value = true;
-    _ensurePersonalSpace();
     unawaited(_persistSession());
     unawaited(fetchUserInfo());
+    unawaited(fetchSpaceList());
     return true;
   }
 
@@ -317,19 +419,6 @@ class AuthService extends GetxService {
     } catch (_) {
       return null;
     }
-  }
-
-  void _ensurePersonalSpace() {
-    if (personalSpace.value != null) return;
-
-    final name = userName.value;
-    final avatarText = name.isNotEmpty ? name.substring(0, 1) : '我';
-    personalSpace.value = PersonalSpace(
-      id: 'ps_${DateTime.now().millisecondsSinceEpoch}',
-      name: '$avatarText的空间',
-      avatarText: avatarText,
-      syncEnabled: true,
-    );
   }
 
   void setPersonalSyncEnabled(bool enabled) {
@@ -402,19 +491,25 @@ class AuthService extends GetxService {
         return false;
       }
 
-      final resolvedLogo = logo?.trim() ?? '';
-      final team = Team(
-        id: 'team_${DateTime.now().millisecondsSinceEpoch}',
-        name: trimmedName,
-        industryType: industryType,
-        teamCode: _generateTeamCode(),
-        brandImagePath: resolvedLogo.isNotEmpty ? resolvedLogo : null,
-      );
-      teams.add(team);
-      activeTeam.value = team;
-      workMode.value = WorkMode.team;
-      if (Get.isRegistered<TeamWorkspaceService>()) {
-        Get.find<TeamWorkspaceService>().ensureTeamInitialized(team, this);
+      final refreshed = await fetchSpaceList();
+      if (!refreshed) return false;
+
+      Team? createdTeam;
+      for (final team in teams) {
+        if (team.name == trimmedName) {
+          createdTeam = team;
+          break;
+        }
+      }
+      activeTeam.value = createdTeam ?? (teams.isNotEmpty ? teams.last : null);
+      if (activeTeam.value != null) {
+        workMode.value = WorkMode.team;
+        if (Get.isRegistered<TeamWorkspaceService>()) {
+          Get.find<TeamWorkspaceService>().ensureTeamInitialized(
+            activeTeam.value!,
+            this,
+          );
+        }
       }
       return true;
     } catch (_) {
@@ -485,15 +580,22 @@ class AuthService extends GetxService {
         return false;
       }
 
-      if (!teams.any((item) => item.id == team.id)) {
-        teams.add(team);
-      }
-      activeTeam.value = team;
-      workMode.value = WorkMode.team;
-      if (Get.isRegistered<TeamWorkspaceService>()) {
-        final workspace = Get.find<TeamWorkspaceService>();
-        workspace.ensureTeamInitialized(team, this);
-        unawaited(workspace.fetchTeamMembers(teamId: team.id, auth: this));
+      final refreshed = await fetchSpaceList();
+      if (!refreshed) return false;
+
+      activeTeam.value = _teamById(team.id) ?? (teams.isNotEmpty ? teams.first : null);
+      if (activeTeam.value != null) {
+        workMode.value = WorkMode.team;
+        if (Get.isRegistered<TeamWorkspaceService>()) {
+          final workspace = Get.find<TeamWorkspaceService>();
+          workspace.ensureTeamInitialized(activeTeam.value!, this);
+          unawaited(
+            workspace.fetchTeamMembers(
+              teamId: activeTeam.value!.id,
+              auth: this,
+            ),
+          );
+        }
       }
       return true;
     } catch (_) {
@@ -502,9 +604,11 @@ class AuthService extends GetxService {
     }
   }
 
-  String _generateTeamCode() {
-    final seed = DateTime.now().millisecondsSinceEpoch % 1000000;
-    return seed.toString().padLeft(6, '0');
+  Team? _teamById(String teamId) {
+    for (final team in teams) {
+      if (team.id == teamId) return team;
+    }
+    return null;
   }
 
   void logout() {
