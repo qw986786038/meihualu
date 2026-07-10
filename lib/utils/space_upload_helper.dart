@@ -9,19 +9,36 @@ import 'package:watermark_camera/widgets/WaterMark/watermark_template_view.dart'
 
 class SpaceUploadPayload {
   const SpaceUploadPayload({
-    required this.sha256Hash,
+    required this.fileSha256Hash,
     required this.exifData,
     required this.watermarkId,
     required this.watermarkContent,
   });
 
-  final String sha256Hash;
+  /// 文件内容的 SHA256。
+  final String fileSha256Hash;
   final String exifData;
   final int watermarkId;
   final String watermarkContent;
+
+  /// 上传接口使用的 SHA256：对「文件 hash + spaceId」再次哈希。
+  String sha256HashForSpace(String spaceId) {
+    return SpaceUploadHelper.buildUploadSha256Hash(
+      fileSha256Hash: fileSha256Hash,
+      spaceId: spaceId,
+    );
+  }
 }
 
 abstract final class SpaceUploadHelper {
+  static String buildUploadSha256Hash({
+    required String fileSha256Hash,
+    required String spaceId,
+  }) {
+    final combined = '$fileSha256Hash$spaceId';
+    return sha256.convert(utf8.encode(combined)).toString();
+  }
+
   static const _exifKeys = [
     'GPSLatitude',
     'GPSLongitude',
@@ -41,7 +58,7 @@ abstract final class SpaceUploadHelper {
     DateTime? captureTime,
   }) async {
     final bytes = await File(filePath).readAsBytes();
-    final sha256Hash = sha256.convert(bytes).toString();
+    final fileSha256Hash = sha256.convert(bytes).toString();
     final exifData = await _readExifJson(filePath);
     final templateId = watermarkString(
       watermarkData,
@@ -58,7 +75,7 @@ abstract final class SpaceUploadHelper {
     );
 
     return SpaceUploadPayload(
-      sha256Hash: sha256Hash,
+      fileSha256Hash: fileSha256Hash,
       exifData: exifData,
       watermarkId: watermarkId,
       watermarkContent: watermarkContent,
@@ -71,7 +88,7 @@ abstract final class SpaceUploadHelper {
     DateTime? captureTime,
   }) async {
     final bytes = await File(filePath).readAsBytes();
-    final sha256Hash = sha256.convert(bytes).toString();
+    final fileSha256Hash = sha256.convert(bytes).toString();
     final exifData = await _readExifJson(filePath);
     final parsed = await WatermarkMetadata.readFromImagePath(filePath);
     final fallbackTime = captureTime ?? DateTime.now();
@@ -83,7 +100,7 @@ abstract final class SpaceUploadHelper {
         fallback: kDefaultWatermarkTemplateId,
       );
       return SpaceUploadPayload(
-        sha256Hash: sha256Hash,
+        fileSha256Hash: fileSha256Hash,
         exifData: exifData,
         watermarkId: watermarkBackendId(templateId),
         watermarkContent: jsonEncode(
@@ -97,7 +114,7 @@ abstract final class SpaceUploadHelper {
     }
 
     return SpaceUploadPayload(
-      sha256Hash: sha256Hash,
+      fileSha256Hash: fileSha256Hash,
       exifData: exifData,
       watermarkId: watermarkBackendId(kDefaultWatermarkTemplateId),
       watermarkContent: '{}',

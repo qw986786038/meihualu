@@ -7,12 +7,16 @@ import 'package:go_router/go_router.dart';
 import 'package:watermark_camera/models/team.dart';
 import 'package:watermark_camera/models/team_album_photo.dart';
 import 'package:watermark_camera/models/team_member.dart';
+import 'package:watermark_camera/models/space_media_viewer_item.dart';
 import 'package:watermark_camera/pages/team/team_member_profile_page.dart';
 import 'package:watermark_camera/router/app_paths.dart';
 import 'package:watermark_camera/services/auth_service.dart';
+import 'package:watermark_camera/services/amap_location_service.dart';
 import 'package:watermark_camera/services/team_workspace_service.dart';
+import 'package:watermark_camera/utils/media_capture_summary.dart';
 import 'package:watermark_camera/utils/space_media_downloader.dart';
 import 'package:watermark_camera/utils/space_media_image.dart';
+import 'package:watermark_camera/utils/space_media_viewer.dart';
 import 'package:watermark_camera/widgets/team_date_filter_sheet.dart';
 import 'package:watermark_camera/widgets/team_member_filter_sheet.dart';
 import 'package:watermark_camera/widgets/work_mode_switch_sheet.dart';
@@ -60,26 +64,43 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
   void initState() {
     super.initState();
     _feedTabController = TabController(length: 2, vsync: this);
+    _feedTabController.addListener(_onFeedTabChanged);
     final team = _team;
     if (team != null) {
       _workspace.ensureTeamInitialized(team, _auth);
-      if (_auth.activeTeam.value == null) {
-        _auth.activeTeam.value = team;
+      if (_auth.activeTeam.value?.id != team.id) {
+        _auth.selectActiveTeam(team);
+      } else {
+        _auth.setWorkMode(WorkMode.team);
       }
-      _auth.setWorkMode(WorkMode.team);
       _loadTeamMedia(team.id);
     }
   }
+
+  void _onFeedTabChanged() {
+    if (_feedTabController.indexIsChanging) return;
+    final team = _team;
+    if (team == null) return;
+    _loadTeamMedia(team.id);
+  }
+
+  int get _currentShowType => _feedTabController.index == 0 ? 1 : 2;
 
   Future<void> _loadTeamMedia(String teamId) async {
     if (!_auth.isLoggedIn.value) return;
     final token = _auth.accessToken.value.trim();
     if (token.isEmpty || teamId.isEmpty) return;
-    await _workspace.fetchTeamMedia(teamId: teamId, accessToken: token);
+    await _workspace.fetchTeamMedia(
+      teamId: teamId,
+      accessToken: token,
+      showType: _currentShowType,
+      date: _selectedDate,
+    );
   }
 
   @override
   void dispose() {
+    _feedTabController.removeListener(_onFeedTabChanged);
     _feedTabController.dispose();
     super.dispose();
   }
@@ -93,12 +114,17 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
   String _formatTodayDate(DateTime date) => formatTeamDateFilterLabel(date);
 
   Future<void> _openDateFilter() async {
+    final team = _team;
     final picked = await showTeamDateFilterSheet(
       context,
       initialDate: _selectedDate,
+      spaceId: team?.id,
     );
     if (picked == null || !mounted) return;
     setState(() => _selectedDate = picked);
+    if (team != null) {
+      await _loadTeamMedia(team.id);
+    }
   }
 
   Future<void> _openMemberFilter() async {
@@ -159,12 +185,8 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
   void _viewRecentPhotos() {
     final team = _team;
     if (team == null) return;
-    final photos = _workspace.photosForTeam(team.id);
-    if (photos.isEmpty) {
-      _showComingSoon('暂无最近照片');
-      return;
-    }
-    setState(() => _selectedDate = photos.first.capturedAt);
+    setState(() => _selectedDate = DateTime.now());
+    _loadTeamMedia(team.id);
   }
 
   Future<void> _openPhotoLedger() async {
@@ -350,9 +372,6 @@ class _WorkCircleTab extends StatelessWidget {
   final VoidCallback onSwitchModeTap;
   final void Function(String feature) onComingSoon;
 
-  TeamWorkspaceService get _workspace => Get.find<TeamWorkspaceService>();
-  AuthService get _auth => Get.find<AuthService>();
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -393,7 +412,6 @@ class _WorkCircleTab extends StatelessWidget {
                       _TeamFeedList(
                         team: team,
                         groupByMember: false,
-                        selectedDate: selectedDate,
                         selectedMemberIds: selectedMemberIds,
                         onInviteMembersTap: onInviteMembersTap,
                         onViewRecentPhotosTap: onViewRecentPhotosTap,
@@ -401,7 +419,6 @@ class _WorkCircleTab extends StatelessWidget {
                       _TeamFeedList(
                         team: team,
                         groupByMember: true,
-                        selectedDate: selectedDate,
                         selectedMemberIds: selectedMemberIds,
                         onInviteMembersTap: onInviteMembersTap,
                         onViewRecentPhotosTap: onViewRecentPhotosTap,
@@ -413,14 +430,6 @@ class _WorkCircleTab extends StatelessWidget {
             ),
           ),
         ),
-        Obx(() {
-          final self = _workspace.selfMemberForTeam(team.id, _auth);
-          if (self == null) return const SizedBox.shrink();
-          return _TeamButlerMessage(
-            memberName: self.name,
-            teamName: team.name,
-          );
-        }),
         _InviteBanner(onTap: onInviteMembersTap),
       ],
     );
@@ -830,7 +839,6 @@ class _TeamFeedList extends StatelessWidget {
   const _TeamFeedList({
     required this.team,
     required this.groupByMember,
-    required this.selectedDate,
     required this.selectedMemberIds,
     required this.onInviteMembersTap,
     required this.onViewRecentPhotosTap,
@@ -838,7 +846,6 @@ class _TeamFeedList extends StatelessWidget {
 
   final Team team;
   final bool groupByMember;
-  final DateTime selectedDate;
   final Set<String> selectedMemberIds;
   final VoidCallback onInviteMembersTap;
   final VoidCallback onViewRecentPhotosTap;
@@ -848,9 +855,13 @@ class _TeamFeedList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
+      if (_workspace.isLoadingMedia.value &&
+          _workspace.feedItemsForTeam(team.id).isEmpty) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
       final items = _workspace.feedItemsForTeam(
         team.id,
-        onDate: selectedDate,
         memberIds:
             selectedMemberIds.isEmpty ? null : selectedMemberIds,
       );
@@ -870,10 +881,11 @@ class _TeamFeedList extends StatelessWidget {
             final memberId = memberIds[index];
             final memberItems =
                 items.where((item) => item.member.id == memberId).toList();
-            final member = memberItems.first.member;
-            final photos =
-                memberItems.expand((item) => item.photos).toList();
-            return _FeedItemCard(member: member, photos: photos);
+            final merged = memberItems.skip(1).fold(
+              memberItems.first,
+              (previous, item) => previous.mergedWith(item),
+            );
+            return _FeedItemCard(feedItem: merged);
           },
         );
       }
@@ -883,7 +895,7 @@ class _TeamFeedList extends StatelessWidget {
         itemCount: items.length,
         itemBuilder: (context, index) {
           final item = items[index];
-          return _FeedItemCard(member: item.member, photos: item.photos);
+          return _FeedItemCard(feedItem: item);
         },
       );
     });
@@ -992,13 +1004,9 @@ class _WorkCircleEmptyState extends StatelessWidget {
 }
 
 class _FeedItemCard extends StatelessWidget {
-  const _FeedItemCard({
-    required this.member,
-    required this.photos,
-  });
+  const _FeedItemCard({required this.feedItem});
 
-  final TeamMember member;
-  final List<TeamAlbumPhoto> photos;
+  final TeamPhotoFeedItem feedItem;
 
   void _showComingSoon(BuildContext context, String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1012,11 +1020,31 @@ class _FeedItemCard extends StatelessWidget {
     return '$hour:$minute';
   }
 
+  String _buildLastCaptureSummary() {
+    final current = Get.isRegistered<AMapLocationService>()
+        ? Get.find<AMapLocationService>().latestLocation.value
+        : null;
+    final distance = MediaCaptureSummary.distanceMeters(
+      fromLatitude: current?.latitude,
+      fromLongitude: current?.longitude,
+      toLatitude: MediaCaptureSummary.parseCoordinate(feedItem.latitude),
+      toLongitude: MediaCaptureSummary.parseCoordinate(feedItem.longitude),
+    );
+    return MediaCaptureSummary.buildLastCaptureLine(
+      lastCaptureTime: feedItem.lastCaptureTime,
+      distanceMeters: distance,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final member = feedItem.member;
+    final photos = feedItem.photos;
     final firstPhoto = photos.isNotEmpty ? photos.first : null;
-    final location = firstPhoto?.location;
-    final capturedAt = firstPhoto?.capturedAt ?? DateTime.now();
+    final location = feedItem.watermarkAddress?.trim().isNotEmpty == true
+        ? feedItem.watermarkAddress
+        : firstPhoto?.location;
+    final capturedAt = feedItem.lastCaptureTime ?? DateTime.now();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1076,7 +1104,7 @@ class _FeedItemCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              '上次拍照:5分钟前, <100米 查看路线 >',
+              _buildLastCaptureSummary(),
               style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
             ),
           ),
@@ -1115,39 +1143,59 @@ class _PhotoGrid extends StatelessWidget {
     }
 
     final count = photos.length.clamp(1, 4);
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: count,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 4,
-        crossAxisSpacing: 4,
-        childAspectRatio: 1,
-      ),
-      itemBuilder: (context, index) {
-        final photo = photos[index];
-        return GestureDetector(
-          onLongPress: () => _downloadPhoto(context, photo),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                SpaceMediaImage(
-                  url: photo.filePath,
-                  placeholderColor: Colors.grey.shade200,
-                ),
-                if (photo.isVideo)
-                  const Center(
-                    child: Icon(
-                      Icons.play_circle_fill,
-                      color: Colors.white,
-                      size: 32,
-                    ),
-                  ),
-              ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const crossAxisCount = 3;
+        const spacing = 6.0;
+        final cellSize =
+            (constraints.maxWidth - spacing * (crossAxisCount - 1)) /
+                crossAxisCount;
+        final rowCount = (count / crossAxisCount).ceil();
+        final gridHeight = cellSize * rowCount + spacing * (rowCount - 1);
+
+        return SizedBox(
+          height: gridHeight,
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: count,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              mainAxisSpacing: spacing,
+              crossAxisSpacing: spacing,
+              childAspectRatio: 1,
             ),
+            itemBuilder: (context, index) {
+              final photo = photos[index];
+              return GestureDetector(
+                onTap: () => openSpaceMediaViewer(
+                  context,
+                  items: SpaceMediaViewerItem.fromTeamPhotos(photos),
+                  initialIndex: index,
+                ),
+                onLongPress: () => _downloadPhoto(context, photo),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      SpaceMediaImage(
+                        url: photo.filePath,
+                        placeholderColor: Colors.grey.shade200,
+                      ),
+                      if (photo.isVideo)
+                        const Center(
+                          child: Icon(
+                            Icons.play_circle_fill,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         );
       },
@@ -1931,7 +1979,7 @@ class _WorkbenchSectionCard extends StatelessWidget {
               crossAxisCount: crossAxisCount,
               mainAxisSpacing: 20,
               crossAxisSpacing: 8,
-              childAspectRatio: crossAxisCount == 3 ? 0.88 : 0.78,
+              childAspectRatio: crossAxisCount == 3 ? 0.82 : 0.72,
             ),
             itemBuilder: (context, index) {
               final item = section.items[index];
@@ -1959,11 +2007,11 @@ class _WorkbenchFeatureTile extends StatelessWidget {
       onTap: item.disabled ? null : item.onTap,
       borderRadius: BorderRadius.circular(8),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: 46,
+            height: 46,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: iconBackground,
@@ -1971,20 +2019,22 @@ class _WorkbenchFeatureTile extends StatelessWidget {
             ),
             child: Icon(
               item.icon,
-              size: 26,
+              size: 24,
               color: item.disabled ? Colors.grey.shade400 : item.iconColor,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            item.label,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              height: 1.3,
-              color: item.disabled ? Colors.grey.shade400 : const Color(0xFF333333),
+          const SizedBox(height: 6),
+          Expanded(
+            child: Text(
+              item.label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.25,
+                color: item.disabled ? Colors.grey.shade400 : const Color(0xFF333333),
+              ),
             ),
           ),
         ],
@@ -2527,57 +2577,6 @@ class _InviteBanner extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _TeamButlerMessage extends StatelessWidget {
-  const _TeamButlerMessage({
-    required this.memberName,
-    required this.teamName,
-  });
-
-  final String memberName;
-  final String teamName;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1677FF).withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.smart_toy_outlined, color: Color(0xFF1677FF), size: 20),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '团队管家',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$memberName 已成功创建团队「$teamName」',
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

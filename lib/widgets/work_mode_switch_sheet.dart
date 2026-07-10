@@ -101,18 +101,26 @@ class _WorkModeSwitchSheetState extends State<WorkModeSwitchSheet> {
   }
 
   void _selectTeam(BuildContext context, Team team) {
-    _auth.activeTeam.value = team;
-    _auth.setWorkMode(WorkMode.team);
-    _workspace.ensureTeamInitialized(team, _auth);
-    _close(context);
-
     final router = GoRouter.of(context);
     final currentPath = router.state.uri.path;
-    final isSameTeamWorkspace =
+    final previousTeamId =
+        widget.currentTeam?.id ?? _auth.activeTeam.value?.id;
+    final isOnTeamWorkspace =
         widget.currentWorkspace == WorkspaceContext.team &&
-        currentPath == AppPaths.teamWorkspace &&
-        (_auth.activeTeam.value?.id ?? team.id) == team.id;
-    if (isSameTeamWorkspace) return;
+        currentPath == AppPaths.teamWorkspace;
+
+    if (isOnTeamWorkspace && previousTeamId == team.id) {
+      _close(context);
+      return;
+    }
+
+    _auth.selectActiveTeam(team);
+    _close(context);
+
+    if (isOnTeamWorkspace) {
+      router.pushReplacement(AppPaths.teamWorkspace, extra: team.id);
+      return;
+    }
 
     if (currentPath == AppPaths.camera) {
       router.push(AppPaths.teamWorkspace, extra: team.id);
@@ -177,8 +185,7 @@ class _WorkModeSwitchSheetState extends State<WorkModeSwitchSheet> {
         _auth.workMode.value != WorkMode.team) {
       return false;
     }
-    final activeId = _auth.activeTeam.value?.id ?? widget.currentTeam?.id;
-    return activeId == team.id;
+    return _auth.activeTeam.value?.id == team.id;
   }
 
   bool get _isPersonalSelected {

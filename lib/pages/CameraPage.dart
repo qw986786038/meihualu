@@ -12,12 +12,14 @@ import 'package:watermark_camera/router/app_paths.dart';
 import 'package:watermark_camera/services/aliyun_image_tagging_service.dart';
 import 'package:watermark_camera/services/aliyun_ocr_service.dart';
 import 'package:watermark_camera/services/amap_location_service.dart';
+import 'package:watermark_camera/services/photo_sync_service.dart';
 import 'package:watermark_camera/widgets/camera_user_menu_sheet.dart';
 import 'package:watermark_camera/widgets/camera_bottom_bar.dart';
 import 'package:watermark_camera/widgets/camera_map_overlay.dart';
 import 'package:watermark_camera/widgets/camera_map_settings_sheet.dart';
 import 'package:watermark_camera/widgets/camerax_buttons.dart';
 import 'package:watermark_camera/widgets/gallery_preview_button.dart';
+import 'package:watermark_camera/widgets/photo_sync_loading_overlay.dart';
 import 'package:watermark_camera/widgets/stack_board.dart';
 import 'package:watermark_camera/widgets/work_mode_bar.dart';
 
@@ -43,6 +45,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   final AliyunImageTaggingService taggingService =
       Get.find<AliyunImageTaggingService>();
   final AliyunOcrService ocrService = Get.find<AliyunOcrService>();
+  final PhotoSyncService photoSyncService = Get.find<PhotoSyncService>();
 
   bool _didAddDefaultWatermark = false;
   bool _isTaggingRecognizing = false;
@@ -373,6 +376,14 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                 ),
               ),
             ),
+          Positioned.fill(
+            child: Obx(
+              () => PhotoSyncLoadingOverlay(
+                visible: photoSyncService.isUploading.value,
+                message: photoSyncService.uploadStatusText.value,
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -318,13 +318,13 @@ class _ClassicTemplate extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         extras,
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        Wrap(
+          spacing: compact ? 6 : 8,
+          runSpacing: compact ? 2 : 4,
+          crossAxisAlignment: WrapCrossAlignment.start,
           children: [
             Text(_formatHm(now), style: timeStyle),
             Container(
-              margin: EdgeInsets.symmetric(horizontal: compact ? 6 : 8),
               width: 3,
               height: compact ? 22 : 30,
               color: Colors.amber,
@@ -333,16 +333,21 @@ class _ClassicTemplate extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_formatYmd(now), style: metaStyle),
+                Text(
+                  _formatYmd(now),
+                  style: metaStyle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 if (showWeekday)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                  Wrap(
+                    spacing: compact ? 6 : 8,
+                    runSpacing: compact ? 2 : 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(_weekdayLabel(now), style: metaStyle),
-                      if (weatherLabel != null) ...[
-                        SizedBox(width: compact ? 6 : 8),
+                      if (weatherLabel != null)
                         Text(weatherLabel, style: metaStyle),
-                      ],
                     ],
                   ),
               ],

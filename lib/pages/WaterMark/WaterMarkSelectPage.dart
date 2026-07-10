@@ -531,25 +531,30 @@ class _PersonalTemplateCard extends StatelessWidget {
                       ),
                       alignment: Alignment.bottomLeft,
                       padding: const EdgeInsets.all(8),
-                      child: FittedBox(
-                        alignment: Alignment.bottomLeft,
-                        fit: BoxFit.scaleDown,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 160),
-                          child: WatermarkTemplateView(
-                            templateId: item.previewTemplateId,
-                            now: sampleNow,
-                            address: _WaterMarkSelectPageState._sampleAddress,
-                            weatherText:
-                                _WaterMarkSelectPageState._sampleWeather,
-                            temperatureText:
-                                _WaterMarkSelectPageState._sampleTemperature,
-                            coordinateText:
-                                _WaterMarkSelectPageState._sampleCoordinate,
-                            showCoordinate: true,
-                            compact: true,
-                          ),
-                        ),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return FittedBox(
+                            alignment: Alignment.bottomLeft,
+                            fit: BoxFit.scaleDown,
+                            child: SizedBox(
+                              width: constraints.maxWidth,
+                              child: WatermarkTemplateView(
+                                templateId: item.previewTemplateId,
+                                now: sampleNow,
+                                address:
+                                    _WaterMarkSelectPageState._sampleAddress,
+                                weatherText:
+                                    _WaterMarkSelectPageState._sampleWeather,
+                                temperatureText: _WaterMarkSelectPageState
+                                    ._sampleTemperature,
+                                coordinateText: _WaterMarkSelectPageState
+                                    ._sampleCoordinate,
+                                showCoordinate: true,
+                                compact: true,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                     if (item.badge != null)
@@ -647,14 +652,17 @@ class _TeamInfoCard extends StatelessWidget {
               ],
             ),
           ),
-          TextButton.icon(
-            onPressed: onSwitchTeam,
-            icon: const Icon(Icons.swap_horiz, size: 18),
-            label: const Text('切换团队'),
-            style: TextButton.styleFrom(
-              foregroundColor: _primaryBlue,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          Flexible(
+            fit: FlexFit.loose,
+            child: TextButton.icon(
+              onPressed: onSwitchTeam,
+              icon: const Icon(Icons.swap_horiz, size: 18),
+              label: const Text('切换团队'),
+              style: TextButton.styleFrom(
+                foregroundColor: _primaryBlue,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
             ),
           ),
         ],
@@ -853,24 +861,30 @@ class _RecommendedTemplateCard extends StatelessWidget {
                   ),
                   padding: const EdgeInsets.all(6),
                   alignment: Alignment.bottomLeft,
-                  child: FittedBox(
-                    alignment: Alignment.bottomLeft,
-                    fit: BoxFit.scaleDown,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 100),
-                      child: WatermarkTemplateView(
-                        templateId: template.previewTemplateId,
-                        now: sampleNow,
-                        address: _WaterMarkSelectPageState._sampleAddress,
-                        weatherText: _WaterMarkSelectPageState._sampleWeather,
-                        temperatureText:
-                            _WaterMarkSelectPageState._sampleTemperature,
-                        coordinateText:
-                            _WaterMarkSelectPageState._sampleCoordinate,
-                        showCoordinate: true,
-                        compact: true,
-                      ),
-                    ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return FittedBox(
+                        alignment: Alignment.bottomLeft,
+                        fit: BoxFit.scaleDown,
+                        child: SizedBox(
+                          width: constraints.maxWidth,
+                          child: WatermarkTemplateView(
+                            templateId: template.previewTemplateId,
+                            now: sampleNow,
+                            address:
+                                _WaterMarkSelectPageState._sampleAddress,
+                            weatherText:
+                                _WaterMarkSelectPageState._sampleWeather,
+                            temperatureText: _WaterMarkSelectPageState
+                                ._sampleTemperature,
+                            coordinateText: _WaterMarkSelectPageState
+                                ._sampleCoordinate,
+                            showCoordinate: true,
+                            compact: true,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),

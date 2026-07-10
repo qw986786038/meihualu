@@ -32,16 +32,19 @@ class AuthService extends GetxService {
   final RxList<Team> teams = <Team>[].obs;
   final Rxn<Team> activeTeam = Rxn<Team>();
 
+  String? _cachedActiveTeamId;
+
   bool get hasPersonalSpace => personalSpace.value != null;
   bool get hasTeam => teams.isNotEmpty;
 
   bool get shouldSyncToPersonal =>
       isLoggedIn.value && (personalSpace.value?.syncEnabled ?? false);
 
-  bool get shouldSyncToTeam =>
-      isLoggedIn.value &&
-      activeTeam.value != null &&
-      activeTeam.value!.syncEnabled;
+  List<Team> get syncEnabledTeams => teams
+      .where((team) => team.syncEnabled && team.id.isNotEmpty)
+      .toList(growable: false);
+
+  bool get shouldSyncToTeam => isLoggedIn.value && syncEnabledTeams.isNotEmpty;
 
   @override
   void onInit() {
@@ -58,8 +61,31 @@ class AuthService extends GetxService {
     userId.value = session.userId ?? '';
     phone.value = session.phone ?? '';
     isLoggedIn.value = true;
+    await _loadCachedActiveTeamId();
     unawaited(fetchUserInfo());
     unawaited(fetchSpaceList());
+  }
+
+  Future<void> _loadCachedActiveTeamId() async {
+    _cachedActiveTeamId = await _storage.readActiveTeamId(userId.value);
+  }
+
+  /// 切换当前默认团队，并写入本地缓存供下次打开团队页使用。
+  void selectActiveTeam(Team team) {
+    activeTeam.value = team;
+    workMode.value = WorkMode.team;
+    _cachedActiveTeamId = team.id;
+
+    final uid = userId.value.trim();
+    if (uid.isNotEmpty) {
+      unawaited(
+        _storage.saveActiveTeamId(userId: uid, teamId: team.id),
+      );
+    }
+
+    if (Get.isRegistered<TeamWorkspaceService>()) {
+      Get.find<TeamWorkspaceService>().ensureTeamInitialized(team, this);
+    }
   }
 
   /// 查询个人空间与团队空间列表。
@@ -118,31 +144,45 @@ class AuthService extends GetxService {
         .toList();
     teams.assignAll(nextTeams);
 
-    String? selectedTeamId;
-    for (final item in data.teamSpace) {
-      if (item.selected && item.spaceId.isNotEmpty) {
-        selectedTeamId = item.spaceId;
-        break;
-      }
-    }
-    if (selectedTeamId != null) {
-      activeTeam.value = _teamById(selectedTeamId);
+    final resolvedTeamId = _resolveActiveTeamId(data);
+    if (resolvedTeamId != null) {
+      activeTeam.value = _teamById(resolvedTeamId);
       workMode.value = WorkMode.team;
     } else {
-      final currentId = activeTeam.value?.id;
-      activeTeam.value = currentId == null ? null : _teamById(currentId);
-      if (activeTeam.value == null && teams.isNotEmpty) {
-        activeTeam.value = teams.first;
-      }
-      if (activeTeam.value == null) {
-        workMode.value = WorkMode.personal;
-      }
+      activeTeam.value = null;
+      workMode.value = WorkMode.personal;
     }
 
     final active = activeTeam.value;
     if (active != null && Get.isRegistered<TeamWorkspaceService>()) {
       Get.find<TeamWorkspaceService>().ensureTeamInitialized(active, this);
     }
+  }
+
+  String? _resolveActiveTeamId(SpaceListData data) {
+    final validTeamIds = data.teamSpace
+        .map((item) => item.spaceId.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    if (validTeamIds.isEmpty) return null;
+
+    final cachedId = _cachedActiveTeamId?.trim();
+    if (cachedId != null && cachedId.isNotEmpty && validTeamIds.contains(cachedId)) {
+      return cachedId;
+    }
+
+    for (final item in data.teamSpace) {
+      if (item.selected && item.spaceId.isNotEmpty) {
+        return item.spaceId;
+      }
+    }
+
+    final currentId = activeTeam.value?.id.trim();
+    if (currentId != null && currentId.isNotEmpty && validTeamIds.contains(currentId)) {
+      return currentId;
+    }
+
+    return teams.isNotEmpty ? teams.first.id : null;
   }
 
   /// 查询当前用户资料。
@@ -389,9 +429,14 @@ class AuthService extends GetxService {
           );
     isLoggedIn.value = true;
     unawaited(_persistSession());
-    unawaited(fetchUserInfo());
-    unawaited(fetchSpaceList());
+    unawaited(_bootstrapAfterLogin());
     return true;
+  }
+
+  Future<void> _bootstrapAfterLogin() async {
+    await _loadCachedActiveTeamId();
+    unawaited(fetchUserInfo());
+    await fetchSpaceList();
   }
 
   String _resolveDisplayName({
@@ -458,9 +503,17 @@ class AuthService extends GetxService {
   void leaveTeam(String teamId) {
     teams.removeWhere((item) => item.id == teamId);
     if (activeTeam.value?.id == teamId) {
-      activeTeam.value = teams.isNotEmpty ? teams.first : null;
-      if (activeTeam.value == null) {
+      final nextTeam = teams.isNotEmpty ? teams.first : null;
+      if (nextTeam != null) {
+        selectActiveTeam(nextTeam);
+      } else {
+        activeTeam.value = null;
+        _cachedActiveTeamId = null;
         workMode.value = WorkMode.personal;
+        final uid = userId.value.trim();
+        if (uid.isNotEmpty) {
+          unawaited(_storage.clearActiveTeamId(uid));
+        }
       }
     }
   }
@@ -501,15 +554,9 @@ class AuthService extends GetxService {
           break;
         }
       }
-      activeTeam.value = createdTeam ?? (teams.isNotEmpty ? teams.last : null);
-      if (activeTeam.value != null) {
-        workMode.value = WorkMode.team;
-        if (Get.isRegistered<TeamWorkspaceService>()) {
-          Get.find<TeamWorkspaceService>().ensureTeamInitialized(
-            activeTeam.value!,
-            this,
-          );
-        }
+      final targetTeam = createdTeam ?? (teams.isNotEmpty ? teams.last : null);
+      if (targetTeam != null) {
+        selectActiveTeam(targetTeam);
       }
       return true;
     } catch (_) {
@@ -583,19 +630,10 @@ class AuthService extends GetxService {
       final refreshed = await fetchSpaceList();
       if (!refreshed) return false;
 
-      activeTeam.value = _teamById(team.id) ?? (teams.isNotEmpty ? teams.first : null);
-      if (activeTeam.value != null) {
-        workMode.value = WorkMode.team;
-        if (Get.isRegistered<TeamWorkspaceService>()) {
-          final workspace = Get.find<TeamWorkspaceService>();
-          workspace.ensureTeamInitialized(activeTeam.value!, this);
-          unawaited(
-            workspace.fetchTeamMembers(
-              teamId: activeTeam.value!.id,
-              auth: this,
-            ),
-          );
-        }
+      final joinedTeam =
+          _teamById(team.id) ?? (teams.isNotEmpty ? teams.first : null);
+      if (joinedTeam != null) {
+        selectActiveTeam(joinedTeam);
       }
       return true;
     } catch (_) {
@@ -624,6 +662,7 @@ class AuthService extends GetxService {
     skipLocalSaveAfterSync.value = false;
     teams.clear();
     activeTeam.value = null;
+    _cachedActiveTeamId = null;
     unawaited(_clearSession());
     if (Get.isRegistered<TeamWorkspaceService>()) {
       Get.find<TeamWorkspaceService>().clearAll();

@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:watermark_camera/config/api_config.dart';
 import 'package:watermark_camera/models/api/api_response.dart';
 import 'package:watermark_camera/models/api/space_batch_upload_data.dart';
 import 'package:watermark_camera/models/api/paged_api_response.dart';
+import 'package:watermark_camera/utils/server_api_logger.dart';
 import 'package:watermark_camera/utils/upload_path_parser.dart';
 
 class ApiClient extends GetxService {
@@ -23,12 +23,14 @@ class ApiClient extends GetxService {
     required String accessToken,
     Map<String, dynamic> body = const {},
     T Function(Map<String, dynamic> json)? dataFromJson,
+    T Function(List<dynamic> list)? dataFromListJson,
     Map<String, String>? headers,
   }) {
     return post(
       path,
       body: body,
       dataFromJson: dataFromJson,
+      dataFromListJson: dataFromListJson,
       headers: {
         ...authHeaders(accessToken),
         ...?headers,
@@ -157,6 +159,7 @@ class ApiClient extends GetxService {
     String path, {
     required Map<String, dynamic> body,
     T Function(Map<String, dynamic> json)? dataFromJson,
+    T Function(List<dynamic> list)? dataFromListJson,
     Map<String, String>? headers,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}$path');
@@ -212,7 +215,11 @@ class ApiClient extends GetxService {
         throw FormatException('接口响应格式错误');
       }
 
-      final result = ApiResponse.fromJson(decoded, dataFromJson);
+      final result = ApiResponse.fromJson(
+        decoded,
+        dataFromJson,
+        fromListJson: dataFromListJson,
+      );
       if (!result.isSuccess) {
         _logFailure(
           method: 'POST',
@@ -367,6 +374,8 @@ class ApiClient extends GetxService {
     required String accessToken,
     required String spaceId,
     required List<SpaceBatchUploadItem> items,
+    required String latitude,
+    required String longitude,
     T Function(Map<String, dynamic> json)? dataFromJson,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}$path');
@@ -376,29 +385,56 @@ class ApiClient extends GetxService {
 
     final requestBody = <String, dynamic>{
       'spaceId': spaceId,
-      'count': items.length,
+      'latitude': latitude,
+      'longitude': longitude,
+      'files': <String>[],
+      'watermarkContent': <String>[],
+      'watermarkId': <int>[],
+      'exifData': <String>[],
+      'sha256Hash': <String>[],
     };
 
     try {
       final request = http.MultipartRequest('POST', uri);
       request.headers.addAll(authHeaders(accessToken));
       request.fields['spaceId'] = spaceId;
+      request.fields['latitude'] = latitude;
+      request.fields['longitude'] = longitude;
 
-      for (var i = 0; i < items.length; i++) {
-        final item = items[i];
+      for (final item in items) {
         final file = File(item.filePath);
         if (!file.existsSync()) {
           throw FormatException('文件不存在: ${item.filePath}');
         }
 
-        request.fields['exifData[$i]'] = item.exifData;
-        request.fields['sha256Hash[$i]'] = item.sha256Hash;
-        request.fields['watermarkId[$i]'] = '${item.watermarkId}';
-        request.fields['watermarkContent[$i]'] = item.watermarkContent;
         request.files.add(
           await http.MultipartFile.fromPath('files', item.filePath),
         );
-        requestBody['file_$i'] = item.filePath;
+        request.files.add(
+          http.MultipartFile.fromString(
+            'watermarkContent',
+            item.watermarkContent,
+          ),
+        );
+        request.files.add(
+          http.MultipartFile.fromString(
+            'watermarkId',
+            '${item.watermarkId}',
+          ),
+        );
+        request.files.add(
+          http.MultipartFile.fromString('exifData', item.exifData),
+        );
+        request.files.add(
+          http.MultipartFile.fromString('sha256Hash', item.sha256Hash),
+        );
+
+        (requestBody['files'] as List<String>).add(item.filePath);
+        (requestBody['watermarkContent'] as List<String>)
+            .add(item.watermarkContent);
+        (requestBody['watermarkId'] as List<int>).add(item.watermarkId);
+        (requestBody['exifData'] as List<String>).add(item.exifData);
+        (requestBody['sha256Hash'] as List<String>).add(item.sha256Hash);
       }
 
       final streamed = await request.send();
@@ -619,17 +655,15 @@ class ApiClient extends GetxService {
     int? businessCode,
     String? businessMsg,
   }) {
-    final buffer = StringBuffer('API 请求成功: $method $uri');
-    buffer.write(' | req=$requestBody');
-    buffer.write(' | status=$statusCode');
-    if (businessCode != null) buffer.write(' | code=$businessCode');
-    if (businessMsg != null && businessMsg.isNotEmpty) {
-      buffer.write(' | msg=$businessMsg');
-    }
-    if (responseBody.isNotEmpty) {
-      buffer.write(' | resp=$responseBody');
-    }
-    debugPrint(buffer.toString());
+    ServerApiLogger.success(
+      method: method,
+      uri: uri,
+      request: requestBody,
+      statusCode: statusCode,
+      responseBody: responseBody,
+      businessCode: businessCode,
+      businessMsg: businessMsg,
+    );
   }
 
   void _logFailure({
@@ -644,24 +678,17 @@ class ApiClient extends GetxService {
     Object? error,
     StackTrace? stackTrace,
   }) {
-    final buffer = StringBuffer('API 请求失败: $method $uri');
-    buffer.write(' | req=$requestBody');
-    if (statusCode != null) buffer.write(' | status=$statusCode');
-    if (businessCode != null) buffer.write(' | code=$businessCode');
-    if (businessMsg != null && businessMsg.isNotEmpty) {
-      buffer.write(' | msg=$businessMsg');
-    }
-    if (reason != null && reason.isNotEmpty) {
-      buffer.write(' | reason=$reason');
-    }
-    if (responseBody != null && responseBody.isNotEmpty) {
-      buffer.write(' | resp=$responseBody');
-    }
-    if (error != null) buffer.write(' | error=$error');
-
-    debugPrint(buffer.toString());
-    if (stackTrace != null) {
-      debugPrint(stackTrace.toString());
-    }
+    ServerApiLogger.failure(
+      method: method,
+      uri: uri,
+      request: requestBody,
+      statusCode: statusCode,
+      responseBody: responseBody,
+      businessCode: businessCode,
+      businessMsg: businessMsg,
+      reason: reason,
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 }

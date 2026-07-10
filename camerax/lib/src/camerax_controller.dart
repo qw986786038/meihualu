@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart' show ChangeNotifier, kIsWeb;
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 
@@ -170,6 +171,8 @@ class CameraxController extends ChangeNotifier {
 
   /// 右侧黑边宽度。
   double _previewLetterboxRight = 0;
+
+  bool _previewLetterboxNotifyScheduled = false;
 
   // ---------- 基本 getter ----------
 
@@ -392,7 +395,16 @@ class CameraxController extends ChangeNotifier {
     _previewLetterboxBottom = bottom;
     _previewLetterboxLeft = left;
     _previewLetterboxRight = right;
-    notifyListeners();
+    _schedulePreviewLetterboxNotify();
+  }
+
+  void _schedulePreviewLetterboxNotify() {
+    if (_previewLetterboxNotifyScheduled) return;
+    _previewLetterboxNotifyScheduled = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _previewLetterboxNotifyScheduled = false;
+      notifyListeners();
+    });
   }
 
   /// Android 使用图像流实时叠加水印编码，避免事后 Media3 合成崩溃。

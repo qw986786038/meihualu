@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:watermark_camera/models/team.dart';
 import 'package:watermark_camera/models/team_album_photo.dart';
 import 'package:watermark_camera/models/team_member.dart';
+import 'package:watermark_camera/models/space_media_viewer_item.dart';
 import 'package:watermark_camera/services/team_workspace_service.dart';
+import 'package:watermark_camera/utils/space_media_viewer.dart';
 
 class TeamMemberProfileArgs {
   const TeamMemberProfileArgs({required this.team, required this.member});
@@ -388,6 +390,8 @@ class _MemberPhotoDateGroupTile extends StatelessWidget {
               final photo = photos[index];
               return _MemberPhotoThumbnail(
                 photo: photo,
+                allPhotos: photos,
+                photoIndex: index,
                 timeLabel: formatTime(photo.capturedAt),
               );
             },
@@ -401,69 +405,99 @@ class _MemberPhotoDateGroupTile extends StatelessWidget {
 class _MemberPhotoThumbnail extends StatelessWidget {
   const _MemberPhotoThumbnail({
     required this.photo,
+    required this.allPhotos,
+    required this.photoIndex,
     required this.timeLabel,
   });
 
   final TeamAlbumPhoto photo;
+  final List<TeamAlbumPhoto> allPhotos;
+  final int photoIndex;
   final String timeLabel;
+
+  Future<void> _openViewer(BuildContext context) async {
+    await openSpaceMediaViewer(
+      context,
+      items: SpaceMediaViewerItem.fromTeamPhotos(allPhotos),
+      initialIndex: photoIndex,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final file = File(photo.filePath);
     final hasImage = file.existsSync();
+    final hasRemote = photo.filePath.startsWith('http://') ||
+        photo.filePath.startsWith('https://') ||
+        (photo.ossUrl?.isNotEmpty ?? false);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (hasImage)
-            Image.file(file, fit: BoxFit.cover)
-          else
-            Container(
-              color: Colors.grey.shade200,
-              alignment: Alignment.center,
-              child: Icon(
-                photo.isVideo ? Icons.videocam_outlined : Icons.image_outlined,
-                color: Colors.grey.shade500,
-                size: 28,
+    return GestureDetector(
+      onTap: () => _openViewer(context),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (hasImage)
+              Image.file(file, fit: BoxFit.cover)
+            else if (hasRemote)
+              Image.network(
+                photo.filePath.startsWith('http')
+                    ? photo.filePath
+                    : photo.ossUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => _placeholder(),
+              )
+            else
+              _placeholder(),
+            if (photo.isVideo)
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.play_arrow,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
               ),
-            ),
-          if (photo.isVideo)
-            Center(
+            Positioned(
+              left: 4,
+              bottom: 4,
               child: Container(
-                width: 32,
-                height: 32,
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.45),
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                child: const Icon(
-                  Icons.play_arrow,
-                  color: Colors.white,
-                  size: 22,
-                ),
-              ),
-            ),
-          Positioned(
-            left: 4,
-            bottom: 4,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.45),
-                borderRadius: BorderRadius.circular(2),
-              ),
-              child: Text(
-                timeLabel,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
+                child: Text(
+                  timeLabel,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _placeholder() {
+    return Container(
+      color: Colors.grey.shade200,
+      alignment: Alignment.center,
+      child: Icon(
+        photo.isVideo ? Icons.videocam_outlined : Icons.image_outlined,
+        color: Colors.grey.shade500,
+        size: 28,
       ),
     );
   }

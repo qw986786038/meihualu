@@ -105,13 +105,17 @@ class _TemplateTile extends StatelessWidget {
                     ),
                     alignment: Alignment.bottomLeft,
                     padding: const EdgeInsets.all(8),
-                    child: FittedBox(
-                      alignment: Alignment.bottomLeft,
-                      fit: BoxFit.scaleDown,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 180),
-                        child: child,
-                      ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return FittedBox(
+                          alignment: Alignment.bottomLeft,
+                          fit: BoxFit.scaleDown,
+                          child: SizedBox(
+                            width: constraints.maxWidth,
+                            child: child,
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),

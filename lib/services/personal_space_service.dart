@@ -43,22 +43,34 @@ class PersonalSpaceService extends GetxService {
   Future<bool> fetchMediaList({
     required String spaceId,
     required String accessToken,
+    String? userId,
+    int showType = 1,
+    DateTime? date,
   }) async {
-    if (spaceId.isEmpty || accessToken.isEmpty) return false;
+    final resolvedUserId =
+        userId ?? Get.find<AuthService>().userId.value.trim();
+    if (spaceId.isEmpty || accessToken.isEmpty || resolvedUserId.isEmpty) {
+      return false;
+    }
 
     isLoadingMedia.value = true;
     try {
-      final response = await Get.find<SpaceApiService>().getMediaList(
+      final response = await Get.find<SpaceApiService>().getMediaBySort(
         accessToken: accessToken,
         spaceId: spaceId,
+        userId: resolvedUserId,
+        showType: showType,
+        date: date,
       );
       if (!response.isSuccess || response.data == null) return false;
 
+      final groups = response.data!;
       photos.removeWhere((photo) => photo.personalSpaceId == spaceId);
+      final files = groups
+          .expand((group) => group.items)
+          .where((file) => file.id.isNotEmpty);
       photos.addAll(
-        response.data!.allFiles
-            .where((file) => file.id.isNotEmpty)
-            .map((file) => file.toPersonalAlbumPhoto(spaceId)),
+        files.map((file) => file.toPersonalAlbumPhoto(spaceId)),
       );
       return true;
     } catch (_) {

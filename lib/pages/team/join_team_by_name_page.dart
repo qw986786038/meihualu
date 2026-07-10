@@ -29,7 +29,7 @@ class _JoinTeamByNamePageState extends State<JoinTeamByNamePage> {
 
   bool get _canSearch {
     final keyword = _nameController.text.trim();
-    return keyword.length >= 3 && !_isSearching;
+    return keyword.isNotEmpty && !_isSearching;
   }
 
   Future<void> _search() async {
@@ -171,7 +171,7 @@ class _JoinTeamByNamePageState extends State<JoinTeamByNamePage> {
                   onSubmitted: _canSearch ? (_) => _search() : null,
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
-                    hintText: '请输入团队名称（至少三个字）',
+                    hintText: '请输入团队名称',
                     hintStyle: TextStyle(
                       color: Colors.grey.shade400,
                       fontSize: 15,

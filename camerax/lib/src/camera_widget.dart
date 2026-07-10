@@ -331,12 +331,17 @@ class _CameraWidgetState extends State<CameraWidget>
           targetLeft: widget.previewLetterboxTargetLeft,
           shift: widget.previewLetterboxShift,
         );
-        widget.controller
-          ..updateCaptureAspectRatio(previewRect.width / previewRect.height)
-          ..updatePreviewLetterbox(
-            containerSize: Size(boxW, boxH),
-            previewRect: previewRect,
-          );
+        final aspectRatio = previewRect.width / previewRect.height;
+        final containerSize = Size(boxW, boxH);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          widget.controller
+            ..updateCaptureAspectRatio(aspectRatio)
+            ..updatePreviewLetterbox(
+              containerSize: containerSize,
+              previewRect: previewRect,
+            );
+        });
 
         final previewFit = isFullscreen ? widget.fit : BoxFit.cover;
         final focusExposureBarHeight = (widget.focusIndicatorSize * 2.4).clamp(

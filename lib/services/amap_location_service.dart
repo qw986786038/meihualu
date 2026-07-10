@@ -219,6 +219,17 @@ class AMapLocationService extends GetxService {
     return location.latitude != null && location.longitude != null;
   }
 
+  /// 当前定位经纬度，用于上传接口顶层参数。
+  ({String latitude, String longitude}) currentCoordinateFields() {
+    final location = latestLocation.value;
+    final lat = location?.latitude;
+    final lon = location?.longitude;
+    return (
+      latitude: lat != null ? lat.toStringAsFixed(6) : '',
+      longitude: lon != null ? lon.toStringAsFixed(6) : '',
+    );
+  }
+
   void _logLocationFailure(String reason, AMapLocation? location) {
     final error = location?.error;
     final buffer = StringBuffer(reason);

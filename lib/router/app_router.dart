@@ -149,7 +149,7 @@ final GoRouter appRouter = GoRouter(
       name: 'teamPhotoSearch',
       builder: (BuildContext context, GoRouterState state) {
         final teamId = state.extra is String ? state.extra as String : null;
-        return TeamPhotoSearchPage(teamId: teamId);
+        return TeamPhotoSearchPage(spaceId: teamId);
       },
     ),
     GoRoute(

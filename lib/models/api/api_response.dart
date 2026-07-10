@@ -13,13 +13,16 @@ class ApiResponse<T> {
 
   factory ApiResponse.fromJson(
     Map<String, dynamic> json,
-    T Function(Map<String, dynamic> json)? fromJsonT,
-  ) {
+    T Function(Map<String, dynamic> json)? fromJsonT, {
+    T Function(List<dynamic> list)? fromListJson,
+  }) {
     final rawData = json['data'];
     T? data;
-    if (rawData is Map<String, dynamic> && fromJsonT != null) {
+    if (rawData is List && fromListJson != null) {
+      data = fromListJson(rawData);
+    } else if (rawData is Map<String, dynamic> && fromJsonT != null) {
       data = fromJsonT(rawData);
-    } else if (rawData != null && fromJsonT == null) {
+    } else if (rawData != null && fromJsonT == null && fromListJson == null) {
       data = rawData as T?;
     }
 

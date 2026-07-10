@@ -3,11 +3,14 @@ import 'package:getx_plus/getx_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:watermark_camera/models/personal_album_photo.dart';
 import 'package:watermark_camera/models/personal_space.dart';
+import 'package:watermark_camera/models/space_media_viewer_item.dart';
 import 'package:watermark_camera/router/app_paths.dart';
 import 'package:watermark_camera/services/auth_service.dart';
 import 'package:watermark_camera/services/personal_space_service.dart';
+import 'package:watermark_camera/utils/media_capture_summary.dart';
 import 'package:watermark_camera/utils/space_media_downloader.dart';
 import 'package:watermark_camera/utils/space_media_image.dart';
+import 'package:watermark_camera/utils/space_media_viewer.dart';
 import 'package:watermark_camera/widgets/work_mode_switch_sheet.dart';
 
 class PersonalSpacePage extends StatefulWidget {
@@ -53,6 +56,15 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$feature功能开发中，敬请期待')),
     );
+  }
+
+  Future<void> _openPhotoSearch() async {
+    final spaceId = _auth.personalSpace.value?.id ?? _space.id;
+    if (spaceId.isEmpty || spaceId == 'debug_personal') {
+      _showComingSoon('搜索');
+      return;
+    }
+    await context.push(AppPaths.teamPhotoSearch, extra: spaceId);
   }
 
   Future<void> _openWorkModeSwitchSheet() async {
@@ -215,7 +227,7 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: TextField(
         readOnly: true,
-        onTap: () => _showComingSoon('搜索'),
+        onTap: _openPhotoSearch,
         decoration: InputDecoration(
           hintText: '搜水印内容、拍摄地点...',
           hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 15),
@@ -441,20 +453,45 @@ class _PhotoDaySection extends StatelessWidget {
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 10),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: photos.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 0.75,
-            ),
-            itemBuilder: (context, index) {
-              return _PersonalPhotoTile(photo: photos[index]);
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const crossAxisCount = 3;
+              const spacing = 8.0;
+              final cellSize =
+                  (constraints.maxWidth - spacing * (crossAxisCount - 1)) /
+                      crossAxisCount;
+              final rowCount = (photos.length / crossAxisCount).ceil();
+              final gridHeight =
+                  cellSize * rowCount + spacing * (rowCount > 1 ? rowCount - 1 : 0);
+
+              return SizedBox(
+                height: gridHeight,
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: photos.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: spacing,
+                    crossAxisSpacing: spacing,
+                    childAspectRatio: 1,
+                  ),
+                  itemBuilder: (context, index) {
+                    return _PersonalPhotoTile(
+                      photo: photos[index],
+                      allPhotos: photos,
+                      photoIndex: index,
+                      compact: true,
+                    );
+                  },
+                ),
+              );
             },
           ),
+          if (photos.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _DayCaptureSummary(photos: photos),
+          ],
         ],
       ),
     );
@@ -462,9 +499,25 @@ class _PhotoDaySection extends StatelessWidget {
 }
 
 class _PersonalPhotoTile extends StatelessWidget {
-  const _PersonalPhotoTile({required this.photo});
+  const _PersonalPhotoTile({
+    required this.photo,
+    required this.allPhotos,
+    required this.photoIndex,
+    this.compact = false,
+  });
 
   final PersonalAlbumPhoto photo;
+  final List<PersonalAlbumPhoto> allPhotos;
+  final int photoIndex;
+  final bool compact;
+
+  Future<void> _openViewer(BuildContext context) async {
+    await openSpaceMediaViewer(
+      context,
+      items: SpaceMediaViewerItem.fromPersonalPhotos(allPhotos),
+      initialIndex: photoIndex,
+    );
+  }
 
   Future<void> _download(BuildContext context) async {
     final url = photo.downloadUrl;
@@ -498,6 +551,7 @@ class _PersonalPhotoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      onTap: () => _openViewer(context),
       onLongPress: () => _download(context),
       child: ClipRRect(
       borderRadius: BorderRadius.circular(6),
@@ -506,15 +560,20 @@ class _PersonalPhotoTile extends StatelessWidget {
         children: [
           SpaceMediaImage(url: photo.filePath),
           if (photo.isVideo)
-            const Center(
-              child: Icon(Icons.play_circle_fill, color: Colors.white, size: 40),
+            Center(
+              child: Icon(
+                Icons.play_circle_fill,
+                color: Colors.white,
+                size: compact ? 24 : 40,
+              ),
             ),
-          Positioned(
-            left: 8,
-            right: 8,
-            bottom: 8,
-            child: _PhotoWatermarkOverlay(photo: photo),
-          ),
+          if (!compact)
+            Positioned(
+              left: 8,
+              right: 8,
+              bottom: 8,
+              child: _PhotoWatermarkOverlay(photo: photo),
+            ),
         ],
       ),
     ),
@@ -580,5 +639,35 @@ class _PhotoWatermarkOverlay extends StatelessWidget {
   DateTime _formatWatermarkTime(String watermarkTime, DateTime fallback) {
     final normalized = watermarkTime.replaceFirst(' ', 'T');
     return DateTime.tryParse(normalized) ?? fallback;
+  }
+}
+
+class _DayCaptureSummary extends StatelessWidget {
+  const _DayCaptureSummary({required this.photos});
+
+  final List<PersonalAlbumPhoto> photos;
+
+  @override
+  Widget build(BuildContext context) {
+    final latest = photos.reduce(
+      (a, b) => a.capturedAt.isAfter(b.capturedAt) ? a : b,
+    );
+    final summary = MediaCaptureSummary.buildLastCaptureLine(
+      lastCaptureTime: latest.capturedAt,
+      distanceMeters: null,
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F6F8),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        summary,
+        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+      ),
+    );
   }
 }

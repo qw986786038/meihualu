@@ -1,9 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:getx_plus/getx_plus.dart';
+import 'package:watermark_camera/services/auth_service.dart';
+import 'package:watermark_camera/services/space_api_service.dart';
+import 'package:watermark_camera/utils/api_date_format.dart';
 
 Future<DateTime?> showTeamDateFilterSheet(
   BuildContext context, {
   required DateTime initialDate,
+  String? spaceId,
 }) {
   return showModalBottomSheet<DateTime>(
     context: context,
@@ -12,7 +17,10 @@ Future<DateTime?> showTeamDateFilterSheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
-    builder: (context) => TeamDateFilterSheet(initialDate: initialDate),
+    builder: (context) => TeamDateFilterSheet(
+      initialDate: initialDate,
+      spaceId: spaceId,
+    ),
   );
 }
 
@@ -29,9 +37,14 @@ bool _isSameDay(DateTime a, DateTime b) {
 }
 
 class TeamDateFilterSheet extends StatefulWidget {
-  const TeamDateFilterSheet({super.key, required this.initialDate});
+  const TeamDateFilterSheet({
+    super.key,
+    required this.initialDate,
+    this.spaceId,
+  });
 
   final DateTime initialDate;
+  final String? spaceId;
 
   @override
   State<TeamDateFilterSheet> createState() => _TeamDateFilterSheetState();
@@ -39,11 +52,14 @@ class TeamDateFilterSheet extends StatefulWidget {
 
 class _TeamDateFilterSheetState extends State<TeamDateFilterSheet> {
   static const _primaryBlue = Color(0xFF1677FF);
+  static const _mediaDateBlue = Color(0xFFEAF3FF);
   static const _weekdayLabels = ['一', '二', '三', '四', '五', '六', '日'];
   static final DateTime _minPickerDate = DateTime(2020, 1);
 
   late DateTime _visibleMonth;
   late DateTime _selectedDate;
+  Set<String> _mediaDates = {};
+  int _loadSeq = 0;
 
   DateTime get _currentMonth =>
       DateTime(DateTime.now().year, DateTime.now().month);
@@ -61,12 +77,38 @@ class _TeamDateFilterSheetState extends State<TeamDateFilterSheet> {
       widget.initialDate.day,
     );
     _visibleMonth = DateTime(_selectedDate.year, _selectedDate.month);
+    _loadMediaDates();
+  }
+
+  Future<void> _loadMediaDates() async {
+    final spaceId = widget.spaceId?.trim();
+    if (spaceId == null || spaceId.isEmpty) return;
+
+    final token = Get.find<AuthService>().accessToken.value.trim();
+    if (token.isEmpty) return;
+
+    final seq = ++_loadSeq;
+    final yearMonth = formatApiYearMonth(_visibleMonth);
+
+    final response = await Get.find<SpaceApiService>().listMediaDatesByMonth(
+      accessToken: token,
+      spaceId: spaceId,
+      yearMonth: yearMonth,
+    );
+
+    if (!mounted || seq != _loadSeq) return;
+    setState(() {
+      _mediaDates = response.isSuccess && response.data != null
+          ? response.data!.toSet()
+          : {};
+    });
   }
 
   void _goPreviousMonth() {
     setState(() {
       _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month - 1);
     });
+    _loadMediaDates();
   }
 
   void _goNextMonth() {
@@ -81,6 +123,7 @@ class _TeamDateFilterSheetState extends State<TeamDateFilterSheet> {
         _visibleMonth = next;
       }
     });
+    _loadMediaDates();
   }
 
   Future<void> _pickYearMonth() async {
@@ -117,6 +160,7 @@ class _TeamDateFilterSheetState extends State<TeamDateFilterSheet> {
                             _visibleMonth = DateTime(picked.year, picked.month);
                           });
                           Navigator.pop(sheetContext);
+                          _loadMediaDates();
                         },
                         child: const Text(
                           '确定',
@@ -311,6 +355,7 @@ class _TeamDateFilterSheetState extends State<TeamDateFilterSheet> {
     final now = DateTime.now();
     final isToday = _isSameDay(date, now);
     final isSelected = _isSameDay(date, _selectedDate);
+    final hasMedia = _mediaDates.contains(formatApiDate(date));
 
     return GestureDetector(
       onTap: () => _selectDate(date),
@@ -354,14 +399,32 @@ class _TeamDateFilterSheetState extends State<TeamDateFilterSheet> {
                         ),
                       ),
                     )
-                  : Text(
-                      '$day',
-                      style: TextStyle(
-                        color: Colors.grey.shade400,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                  : hasMedia
+                      ? Container(
+                          width: 36,
+                          height: 36,
+                          alignment: Alignment.center,
+                          decoration: const BoxDecoration(
+                            color: _mediaDateBlue,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '$day',
+                            style: const TextStyle(
+                              color: _primaryBlue,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        )
+                      : Text(
+                          '$day',
+                          style: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
         ),
       ),
     );
