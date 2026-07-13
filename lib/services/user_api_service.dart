@@ -40,6 +40,36 @@ class UserApiService extends GetxService {
     );
   }
 
+  Future<ApiResponse<LoginData>> loginByWechat({
+    required String code,
+  }) {
+    return _client.post(
+      'user/loginByWechat',
+      body: {
+        'code': code,
+        'clientId': ApiConfig.clientId,
+      },
+      dataFromJson: LoginData.fromJson,
+    );
+  }
+
+  Future<ApiResponse<LoginData>> bindPhoneByWechat({
+    required String bindToken,
+    required String phone,
+    required String smsCode,
+  }) {
+    return _client.post(
+      'user/bindPhoneByWechat',
+      body: {
+        'bindToken': bindToken,
+        'phone': phone,
+        'clientId': ApiConfig.clientId,
+        'smsCode': smsCode,
+      },
+      dataFromJson: LoginData.fromJson,
+    );
+  }
+
   Future<ApiResponse<void>> sendSmsCode({required String phone}) {
     return _client.post<void>(
       'sms/sendCode',

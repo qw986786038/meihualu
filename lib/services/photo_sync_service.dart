@@ -6,6 +6,7 @@ import 'package:watermark_camera/services/personal_space_service.dart';
 import 'package:watermark_camera/services/space_api_service.dart';
 import 'package:watermark_camera/services/team_workspace_service.dart';
 import 'package:watermark_camera/utils/space_upload_helper.dart';
+import 'package:watermark_camera/utils/watermark_metadata.dart';
 import 'package:watermark_camera/widgets/WaterMark/watermark_data_keys.dart';
 
 class PhotoSyncResult {
@@ -54,6 +55,9 @@ class PhotoSyncService extends GetxService {
       locationService: locationService,
       captureTime: capturedAt,
     );
+    final proofMark = _auth.proofMarkEnabled.value
+        ? await WatermarkMetadata.verifyProofMark(filePath)
+        : null;
 
     final totalTargets =
         (uploadPersonal && _auth.personalSpace.value?.id.isNotEmpty == true
@@ -87,6 +91,7 @@ class PhotoSyncService extends GetxService {
             payload: payload,
             latitude: coordinates.latitude,
             longitude: coordinates.longitude,
+            proofMark: proofMark,
           );
           completedTargets++;
           if (personalUploaded && Get.isRegistered<PersonalSpaceService>()) {
@@ -114,6 +119,7 @@ class PhotoSyncService extends GetxService {
           payload: payload,
           latitude: coordinates.latitude,
           longitude: coordinates.longitude,
+          proofMark: proofMark,
         );
         completedTargets++;
         if (!uploaded) continue;
@@ -163,6 +169,7 @@ class PhotoSyncService extends GetxService {
     required SpaceUploadPayload payload,
     required String latitude,
     required String longitude,
+    bool? proofMark,
   }) async {
     try {
       final response = await Get.find<SpaceApiService>().uploadToSpace(
@@ -175,6 +182,7 @@ class PhotoSyncService extends GetxService {
         watermarkContent: payload.watermarkContent,
         latitude: latitude,
         longitude: longitude,
+        proofMark: proofMark,
       );
       if (!response.isSuccess || response.data == null) return false;
       return response.data!.success;

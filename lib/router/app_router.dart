@@ -7,6 +7,7 @@ import 'package:watermark_camera/pages/WelcomePage.dart';
 import 'package:watermark_camera/pages/auth/edit_profile_page.dart';
 import 'package:watermark_camera/pages/auth/forgot_password_page.dart';
 import 'package:watermark_camera/pages/auth/login_page.dart';
+import 'package:watermark_camera/pages/auth/wechat_bind_phone_page.dart';
 import 'package:watermark_camera/pages/auth/user_profile_page.dart';
 import 'package:watermark_camera/pages/personal/personal_space_page.dart';
 import 'package:watermark_camera/pages/personal/personal_space_upload_controller.dart';
@@ -85,6 +86,14 @@ final GoRouter appRouter = GoRouter(
       name: 'forgotPassword',
       builder: (BuildContext context, GoRouterState state) =>
           const ForgotPasswordPage(),
+    ),
+    GoRoute(
+      path: AppPaths.wechatBindPhone,
+      name: 'wechatBindPhone',
+      builder: (BuildContext context, GoRouterState state) {
+        final bindToken = state.extra?.toString() ?? '';
+        return WechatBindPhonePage(bindToken: bindToken);
+      },
     ),
     GoRoute(
       path: AppPaths.userProfile,

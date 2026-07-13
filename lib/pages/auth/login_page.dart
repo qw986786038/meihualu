@@ -149,6 +149,36 @@ class _LoginPageState extends State<LoginPage> {
     if (mounted) context.pop(true);
   }
 
+  Future<void> _loginWithWechat() async {
+    if (_isSubmitting) return;
+
+    setState(() => _isSubmitting = true);
+    final result = await _auth.loginWithWechat();
+    if (!mounted) return;
+
+    setState(() => _isSubmitting = false);
+    if (result.needBindPhone) {
+      final bound = await context.push<bool>(
+        AppPaths.wechatBindPhone,
+        extra: result.bindToken,
+      );
+      if (!mounted) return;
+      if (bound == true) context.pop(true);
+      return;
+    }
+
+    if (!result.loggedIn) {
+      _showMessage(
+        _auth.lastErrorMessage.value.isNotEmpty
+            ? _auth.lastErrorMessage.value
+            : '微信登录失败，请稍后重试',
+      );
+      return;
+    }
+
+    if (mounted) context.pop(true);
+  }
+
   void _showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
@@ -282,6 +312,31 @@ class _LoginPageState extends State<LoginPage> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Text('立即登录'),
+          ),
+          const SizedBox(height: 28),
+          Row(
+            children: [
+              Expanded(child: Divider(color: Colors.grey.shade300)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  '其他登录方式',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
+              ),
+              Expanded(child: Divider(color: Colors.grey.shade300)),
+            ],
+          ),
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+            onPressed: _isSubmitting ? null : _loginWithWechat,
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              foregroundColor: const Color(0xFF07C160),
+              side: BorderSide(color: Colors.grey.shade300),
+            ),
+            icon: const Icon(Icons.wechat, color: Color(0xFF07C160)),
+            label: const Text('微信授权登录'),
           ),
         ],
 

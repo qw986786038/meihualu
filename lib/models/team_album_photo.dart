@@ -11,6 +11,7 @@ class TeamAlbumPhoto {
     this.isVideo = false,
     this.watermarkTemplateId,
     this.watermarkTime,
+    this.proofMark = false,
   });
 
   final String id;
@@ -24,6 +25,7 @@ class TeamAlbumPhoto {
   final bool isVideo;
   final String? watermarkTemplateId;
   final String? watermarkTime;
+  final bool proofMark;
 
   String get downloadUrl {
     final remote = ossUrl?.trim();

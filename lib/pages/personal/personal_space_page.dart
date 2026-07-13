@@ -555,26 +555,19 @@ class _PersonalPhotoTile extends StatelessWidget {
       onLongPress: () => _download(context),
       child: ClipRRect(
       borderRadius: BorderRadius.circular(6),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          SpaceMediaImage(url: photo.filePath),
-          if (photo.isVideo)
-            Center(
-              child: Icon(
-                Icons.play_circle_fill,
-                color: Colors.white,
-                size: compact ? 24 : 40,
-              ),
-            ),
-          if (!compact)
-            Positioned(
-              left: 8,
-              right: 8,
-              bottom: 8,
-              child: _PhotoWatermarkOverlay(photo: photo),
-            ),
-        ],
+      child: SpaceMediaThumbnail(
+        url: photo.filePath,
+        isVideo: photo.isVideo,
+        proofMark: photo.proofMark,
+        videoIconSize: compact ? 24 : 40,
+        bottomOverlay: !compact
+            ? Positioned(
+                left: 8,
+                right: 8,
+                bottom: 8,
+                child: _PhotoWatermarkOverlay(photo: photo),
+              )
+            : null,
       ),
     ),
     );

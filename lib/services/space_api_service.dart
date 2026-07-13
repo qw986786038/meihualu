@@ -34,20 +34,26 @@ class SpaceApiService extends GetxService {
     required String watermarkContent,
     required String latitude,
     required String longitude,
+    bool? proofMark,
   }) {
+    final fields = <String, String>{
+      'spaceId': spaceId,
+      'exifData': exifData,
+      'sha256Hash': sha256Hash,
+      'watermarkId': '$watermarkId',
+      'watermarkContent': watermarkContent,
+      'latitude': latitude,
+      'longitude': longitude,
+    };
+    if (proofMark != null) {
+      fields['proofMark'] = proofMark ? 'true' : 'false';
+    }
+
     return _client.uploadAuthMultipart(
       'space/upload',
       accessToken: accessToken,
       filePath: filePath,
-      fields: {
-        'spaceId': spaceId,
-        'exifData': exifData,
-        'sha256Hash': sha256Hash,
-        'watermarkId': '$watermarkId',
-        'watermarkContent': watermarkContent,
-        'latitude': latitude,
-        'longitude': longitude,
-      },
+      fields: fields,
       dataFromJson: SpaceUploadResult.fromJson,
     );
   }

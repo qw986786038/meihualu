@@ -54,6 +54,10 @@ dependencies:
   native_exif: ^0.8.0
   qr_flutter: ^4.1.0
   shared_preferences: ^2.5.3
+  fluwx: ^6.0.0
+
+fluwx:
+  app_id: wxb6ff0bb17edccf78
 
 dev_dependencies:
   flutter_test:

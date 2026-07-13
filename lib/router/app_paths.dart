@@ -6,6 +6,7 @@ abstract final class AppPaths {
   static const camera = '/camera';
   static const login = '/login';
   static const forgotPassword = '/forgot-password';
+  static const wechatBindPhone = '/auth/wechat-bind-phone';
   static const userProfile = '/user/profile';
   static const editProfile = '/user/profile/edit';
   static const createTeam = '/team/create';

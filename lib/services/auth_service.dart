@@ -8,11 +8,13 @@ import 'package:watermark_camera/models/api/space_list_data.dart';
 import 'package:watermark_camera/models/api/user_info.dart';
 import 'package:watermark_camera/models/personal_space.dart';
 import 'package:watermark_camera/models/team.dart';
+import 'package:watermark_camera/models/wechat_login_result.dart';
 import 'package:watermark_camera/services/auth_storage.dart';
 import 'package:watermark_camera/services/personal_space_service.dart';
 import 'package:watermark_camera/services/space_api_service.dart';
 import 'package:watermark_camera/services/team_workspace_service.dart';
 import 'package:watermark_camera/services/user_api_service.dart';
+import 'package:watermark_camera/services/wechat_auth_service.dart';
 
 enum WorkMode { personal, team }
 
@@ -29,6 +31,7 @@ class AuthService extends GetxService {
   final Rx<WorkMode> workMode = WorkMode.personal.obs;
   final Rxn<PersonalSpace> personalSpace = Rxn<PersonalSpace>();
   final RxBool skipLocalSaveAfterSync = false.obs;
+  final RxBool proofMarkEnabled = false.obs;
   final RxList<Team> teams = <Team>[].obs;
   final Rxn<Team> activeTeam = Rxn<Team>();
 
@@ -45,6 +48,9 @@ class AuthService extends GetxService {
       .toList(growable: false);
 
   bool get shouldSyncToTeam => isLoggedIn.value && syncEnabledTeams.isNotEmpty;
+
+  bool get hasAnySyncEnabledSpace =>
+      shouldSyncToPersonal || shouldSyncToTeam;
 
   @override
   void onInit() {
@@ -349,6 +355,60 @@ class AuthService extends GetxService {
     );
   }
 
+  /// 微信授权登录。
+  Future<WechatLoginResult> loginWithWechat() async {
+    lastErrorMessage.value = '';
+    try {
+      final code = await Get.find<WeChatAuthService>().requestAuthCode();
+      final response = await Get.find<UserApiService>().loginByWechat(code: code);
+      if (!response.isSuccess || response.data == null) {
+        lastErrorMessage.value = response.msg ?? '登录失败';
+        return const WechatLoginResult.failed();
+      }
+
+      final data = response.data!;
+      if (data.needBindPhone == true) {
+        final bindToken = data.bindToken?.trim();
+        if (bindToken == null || bindToken.isEmpty) {
+          lastErrorMessage.value = '登录失败：未返回绑定令牌';
+          return const WechatLoginResult.failed();
+        }
+        return WechatLoginResult.bindPhoneRequired(bindToken);
+      }
+
+      final loggedIn = await _completeLoginFromData(data, phoneNumber: '');
+      return loggedIn
+          ? const WechatLoginResult.loggedIn()
+          : const WechatLoginResult.failed();
+    } on WeChatAuthException catch (error) {
+      lastErrorMessage.value = error.message;
+      return const WechatLoginResult.failed();
+    } catch (_) {
+      lastErrorMessage.value = '微信登录失败，请稍后重试';
+      return const WechatLoginResult.failed();
+    }
+  }
+
+  /// 微信账号绑定手机号。
+  Future<bool> bindPhoneWithWechat({
+    required String bindToken,
+    required String phoneNumber,
+    required String smsCode,
+  }) async {
+    final trimmedPhone = phoneNumber.trim();
+    final trimmedCode = smsCode.trim();
+    if (trimmedPhone.isEmpty || trimmedCode.isEmpty) return false;
+
+    return _handleLoginResponse(
+      phoneNumber: trimmedPhone,
+      responseFuture: Get.find<UserApiService>().bindPhoneByWechat(
+        bindToken: bindToken,
+        phone: trimmedPhone,
+        smsCode: trimmedCode,
+      ),
+    );
+  }
+
   /// 忘记密码，重置密码。
   Future<bool> resetPassword({
     required String phoneNumber,
@@ -393,22 +453,29 @@ class AuthService extends GetxService {
       }
 
       final data = response.data!;
-      final token = data.accessToken;
-      if (token == null || token.isEmpty) {
-        lastErrorMessage.value = '登录失败：未返回 token';
-        return false;
-      }
-
-      return _completeLogin(
-        phoneNumber: phoneNumber,
-        userId: data.userId ?? '',
-        accessToken: token,
-        expireIn: data.expireIn,
-      );
+      return _completeLoginFromData(data, phoneNumber: phoneNumber);
     } catch (_) {
       lastErrorMessage.value = '网络异常，请稍后重试';
       return false;
     }
+  }
+
+  Future<bool> _completeLoginFromData(
+    LoginData data, {
+    required String phoneNumber,
+  }) async {
+    final token = data.accessToken;
+    if (token == null || token.isEmpty) {
+      lastErrorMessage.value = '登录失败：未返回 token';
+      return false;
+    }
+
+    return _completeLogin(
+      phoneNumber: phoneNumber,
+      userId: data.userId ?? '',
+      accessToken: token,
+      expireIn: data.expireIn,
+    );
   }
 
   bool _completeLogin({
@@ -447,7 +514,10 @@ class AuthService extends GetxService {
     if (tokenUserName != null && tokenUserName.isNotEmpty) {
       return tokenUserName;
     }
-    return '用户${phoneNumber.substring(phoneNumber.length - 4)}';
+    if (phoneNumber.length >= 4) {
+      return '用户${phoneNumber.substring(phoneNumber.length - 4)}';
+    }
+    return '微信用户';
   }
 
   String? _decodeJwtUserName(String token) {
@@ -470,6 +540,7 @@ class AuthService extends GetxService {
     final space = personalSpace.value;
     if (space == null) return;
     personalSpace.value = space.copyWith(syncEnabled: enabled);
+    _syncProofMarkWithSyncSpaces();
   }
 
   void setTeamSyncEnabled(bool enabled, {String? teamId}) {
@@ -483,6 +554,22 @@ class AuthService extends GetxService {
     teams[index] = updated;
     if (activeTeam.value?.id == targetId) {
       activeTeam.value = updated;
+    }
+    _syncProofMarkWithSyncSpaces();
+  }
+
+  /// 开启防伪认证前需至少有一个拍照自动上传的空间。
+  bool setProofMarkEnabled(bool enabled) {
+    if (enabled && !hasAnySyncEnabledSpace) {
+      return false;
+    }
+    proofMarkEnabled.value = enabled;
+    return true;
+  }
+
+  void _syncProofMarkWithSyncSpaces() {
+    if (!hasAnySyncEnabledSpace) {
+      proofMarkEnabled.value = false;
     }
   }
 
@@ -660,6 +747,7 @@ class AuthService extends GetxService {
     workMode.value = WorkMode.personal;
     personalSpace.value = null;
     skipLocalSaveAfterSync.value = false;
+    proofMarkEnabled.value = false;
     teams.clear();
     activeTeam.value = null;
     _cachedActiveTeamId = null;

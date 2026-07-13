@@ -8,6 +8,7 @@ import 'package:watermark_camera/models/team_album_photo.dart';
 import 'package:watermark_camera/models/team_member.dart';
 import 'package:watermark_camera/models/space_media_viewer_item.dart';
 import 'package:watermark_camera/services/team_workspace_service.dart';
+import 'package:watermark_camera/utils/space_media_image.dart';
 import 'package:watermark_camera/utils/space_media_viewer.dart';
 
 class TeamMemberProfileArgs {
@@ -466,6 +467,7 @@ class _MemberPhotoThumbnail extends StatelessWidget {
                   ),
                 ),
               ),
+            if (photo.proofMark) const SpaceProofMarkBadge(),
             Positioned(
               left: 4,
               bottom: 4,

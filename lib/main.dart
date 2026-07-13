@@ -12,6 +12,7 @@ import 'package:watermark_camera/services/user_api_service.dart';
 import 'package:watermark_camera/services/personal_space_service.dart';
 import 'package:watermark_camera/services/photo_sync_service.dart';
 import 'package:watermark_camera/services/team_workspace_service.dart';
+import 'package:watermark_camera/services/wechat_auth_service.dart';
 import 'package:getx_plus/getx_plus.dart';
 
 void main() {
@@ -22,6 +23,7 @@ void main() {
   Get.put(AliyunOcrService(), permanent: true);
   Get.put(ApiClient(), permanent: true);
   Get.put(UserApiService(), permanent: true);
+  Get.put(WeChatAuthService(), permanent: true);
   Get.put(FileApiService(), permanent: true);
   Get.put(SpaceApiService(), permanent: true);
   Get.put(SpaceMediaService(), permanent: true);

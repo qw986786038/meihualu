@@ -9,6 +9,8 @@ class LoginData {
     this.expireIn,
     this.refreshExpireIn,
     this.clientId,
+    this.needBindPhone,
+    this.bindToken,
   });
 
   final String? scope;
@@ -20,6 +22,8 @@ class LoginData {
   final int? expireIn;
   final int? refreshExpireIn;
   final String? clientId;
+  final bool? needBindPhone;
+  final String? bindToken;
 
   factory LoginData.fromJson(Map<String, dynamic> json) {
     return LoginData(
@@ -32,6 +36,18 @@ class LoginData {
       expireIn: json['expire_in'] as int?,
       refreshExpireIn: json['refresh_expire_in'] as int?,
       clientId: json['client_id'] as String?,
+      needBindPhone: _parseBool(json['needBindPhone']),
+      bindToken: json['bindToken']?.toString(),
     );
+  }
+
+  static bool? _parseBool(dynamic value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final text = value.toString().trim().toLowerCase();
+    if (text == 'true' || text == '1') return true;
+    if (text == 'false' || text == '0') return false;
+    return null;
   }
 }

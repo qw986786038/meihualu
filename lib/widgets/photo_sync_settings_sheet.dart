@@ -289,6 +289,62 @@ class PhotoSyncSettingsSheet extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: 12),
+                Obx(
+                  () => _SectionCard(
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.verified_user_outlined,
+                          size: 28,
+                          color: Colors.grey.shade600,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                '防伪认证',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '上传时验证照片防伪标识',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch.adaptive(
+                          value: _auth.proofMarkEnabled.value,
+                          activeTrackColor: const Color(0xFF34C759),
+                          onChanged: (value) {
+                            if (value && !_auth.setProofMarkEnabled(true)) {
+                              ScaffoldMessenger.of(context)
+                                ..hideCurrentSnackBar()
+                                ..showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      '请先开启至少一个拍照自动上传的空间',
+                                    ),
+                                  ),
+                                );
+                              return;
+                            }
+                            _auth.setProofMarkEnabled(value);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

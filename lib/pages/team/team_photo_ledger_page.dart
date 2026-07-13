@@ -1,11 +1,10 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:watermark_camera/models/team.dart';
 import 'package:watermark_camera/models/team_album_photo.dart';
 import 'package:watermark_camera/models/team_member.dart';
 import 'package:watermark_camera/services/team_workspace_service.dart';
+import 'package:watermark_camera/utils/space_media_image.dart';
 import 'package:watermark_camera/widgets/team_date_range_filter_sheet.dart';
 import 'package:watermark_camera/widgets/team_watermark_filter_sheet.dart';
 import 'package:watermark_camera/widgets/team_member_filter_sheet.dart';
@@ -483,7 +482,10 @@ class _LedgerTableRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 56,
-            child: _PhotoThumb(filePath: photo.filePath),
+            child: _PhotoThumb(
+              filePath: photo.filePath,
+              proofMark: photo.proofMark,
+            ),
           ),
           SizedBox(
             width: 56,
@@ -514,35 +516,27 @@ class _LedgerTableRow extends StatelessWidget {
 }
 
 class _PhotoThumb extends StatelessWidget {
-  const _PhotoThumb({required this.filePath});
+  const _PhotoThumb({
+    required this.filePath,
+    this.proofMark = false,
+  });
 
   final String filePath;
+  final bool proofMark;
 
   @override
   Widget build(BuildContext context) {
-    if (filePath.isNotEmpty) {
-      final file = File(filePath);
-      if (file.existsSync()) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: Image.file(
-            file,
-            width: 44,
-            height: 44,
-            fit: BoxFit.cover,
-          ),
-        );
-      }
-    }
-
-    return Container(
+    return SizedBox(
       width: 44,
       height: 44,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade200,
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(4),
+        child: SpaceMediaThumbnail(
+          url: filePath,
+          placeholderColor: Colors.grey.shade200,
+          proofMark: proofMark,
+        ),
       ),
-      child: Icon(Icons.image_outlined, size: 20, color: Colors.grey.shade400),
     );
   }
 }

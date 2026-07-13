@@ -73,6 +73,7 @@ class SpaceMediaFile {
     this.watermarkId,
     this.watermarkContent,
     this.fileSize = 0,
+    this.proofMark = false,
   });
 
   final String id;
@@ -88,6 +89,7 @@ class SpaceMediaFile {
   final int? watermarkId;
   final Map<String, dynamic>? watermarkContent;
   final int fileSize;
+  final bool proofMark;
 
   bool get isVideo => fileType.toLowerCase().contains('video');
 
@@ -139,7 +141,17 @@ class SpaceMediaFile {
           ? Map<String, dynamic>.from(rawContent)
           : null,
       fileSize: json['fileSize'] as int? ?? 0,
+      proofMark: _parseProofMark(json['proofMark']),
     );
+  }
+
+  static bool _parseProofMark(dynamic value) {
+    if (value == null) return false;
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final text = value.toString().trim().toLowerCase();
+    if (text == 'true' || text == '1') return true;
+    return false;
   }
 
   PersonalAlbumPhoto toPersonalAlbumPhoto(String personalSpaceId) {
@@ -153,6 +165,7 @@ class SpaceMediaFile {
       location: location,
       isVideo: isVideo,
       watermarkTime: watermarkTime,
+      proofMark: proofMark,
     );
   }
 
@@ -169,6 +182,7 @@ class SpaceMediaFile {
       isVideo: isVideo,
       watermarkTemplateId: watermarkId?.toString(),
       watermarkTime: watermarkTime,
+      proofMark: proofMark,
     );
   }
 

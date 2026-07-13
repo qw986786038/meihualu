@@ -342,6 +342,7 @@ class _ClassicTemplate extends StatelessWidget {
                 if (showWeekday)
                   Wrap(
                     spacing: compact ? 6 : 8,
+
                     runSpacing: compact ? 2 : 4,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
@@ -365,6 +366,7 @@ class _ClassicTemplate extends StatelessWidget {
         ],
         if (showCoordinate && coordinateText != null) ...[
           SizedBox(height: compact ? 1 : 2),
+
           Text(
             coordinateText!,
             style: metaStyle,

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:native_exif/native_exif.dart';
+import 'package:watermark_camera/utils/watermark_original_store.dart';
 import 'package:watermark_camera/widgets/WaterMark/watermark_template_view.dart';
 
 const String kWatermarkMetaPrefix = 'WM_CAMERA:';
@@ -249,5 +250,32 @@ class WatermarkMetadata {
         nh: 0.18,
       ),
     );
+  }
+
+  /// 验证图片是否携带本应用写入的防伪水印元数据。
+  static Future<bool> verifyProofMark(String path) async {
+    if (!(Platform.isAndroid || Platform.isIOS)) return false;
+    final lower = path.toLowerCase();
+    if (!lower.endsWith('.jpg') && !lower.endsWith('.jpeg')) return false;
+
+    Exif? exif;
+    try {
+      exif = await Exif.fromPath(path);
+      final comment = await exif.getAttribute<String>('UserComment');
+      final parsed = decodeUserComment(comment);
+      if (parsed == null) return false;
+
+      final originalId = parsed.originalId?.trim();
+      if (originalId != null && originalId.isNotEmpty) {
+        final originalPath = await WatermarkOriginalStore.resolvePath(originalId);
+        return originalPath != null;
+      }
+
+      return parsed.data.containsKey(kWatermarkDataTemplateId);
+    } catch (_) {
+      return false;
+    } finally {
+      await exif?.close();
+    }
   }
 }

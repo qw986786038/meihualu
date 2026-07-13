@@ -1176,22 +1176,12 @@ class _PhotoGrid extends StatelessWidget {
                 onLongPress: () => _downloadPhoto(context, photo),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(4),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      SpaceMediaImage(
-                        url: photo.filePath,
-                        placeholderColor: Colors.grey.shade200,
-                      ),
-                      if (photo.isVideo)
-                        const Center(
-                          child: Icon(
-                            Icons.play_circle_fill,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                    ],
+                  child: SpaceMediaThumbnail(
+                    url: photo.filePath,
+                    placeholderColor: Colors.grey.shade200,
+                    isVideo: photo.isVideo,
+                    proofMark: photo.proofMark,
+                    videoIconSize: 22,
                   ),
                 ),
               );

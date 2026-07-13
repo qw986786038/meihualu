@@ -9,6 +9,7 @@ class PersonalAlbumPhoto {
     this.location,
     this.isVideo = false,
     this.watermarkTime,
+    this.proofMark = false,
   });
 
   final String id;
@@ -20,6 +21,7 @@ class PersonalAlbumPhoto {
   final String? location;
   final bool isVideo;
   final String? watermarkTime;
+  final bool proofMark;
 
   String get downloadUrl {
     final remote = ossUrl?.trim();

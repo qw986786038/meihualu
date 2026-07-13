@@ -390,7 +390,11 @@ class _SearchResultGroup extends StatelessWidget {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(4),
-                  child: SpaceMediaImage(url: file.displayUrl),
+                  child: SpaceMediaThumbnail(
+                    url: file.displayUrl,
+                    isVideo: file.isVideo,
+                    proofMark: file.proofMark,
+                  ),
                 ),
               );
             },
