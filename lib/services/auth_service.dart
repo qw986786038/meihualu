@@ -140,12 +140,12 @@ class AuthService extends GetxService {
         .where((item) => item.spaceId.isNotEmpty)
         .map((item) {
           final existing = previousTeams[item.spaceId];
-          return item.toTeam(
+          final team = item.toTeam(
             syncEnabled: existing?.syncEnabled ?? true,
-          ).copyWith(
-            industryType: existing?.industryType ?? '',
-            teamCode: existing?.teamCode ?? '',
           );
+          final existingIndustry = existing?.industryType.trim() ?? '';
+          if (existingIndustry.isEmpty) return team;
+          return team.copyWith(industryType: existingIndustry);
         })
         .toList();
     teams.assignAll(nextTeams);

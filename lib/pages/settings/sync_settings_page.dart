@@ -8,12 +8,6 @@ class SyncSettingsPage extends StatelessWidget {
 
   AuthService get _auth => Get.find<AuthService>();
 
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature功能开发中，敬请期待')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -46,44 +40,8 @@ class SyncSettingsPage extends StatelessWidget {
               onChanged: (value) => _auth.skipLocalSaveAfterSync.value = value,
             ),
           ),
-          const SizedBox(height: 12),
-          const _SectionHeader(title: '团队同步设置'),
-          _TeamSyncTile(
-            title: '高清原图',
-            onTap: () => _showComingSoon(context, '高清原图'),
-          ),
-          _divider(),
-          _TeamSyncTile(
-            title: '无水印照片',
-            onTap: () => _showComingSoon(context, '无水印照片'),
-          ),
-          _divider(),
-          _TeamSyncTile(
-            title: '无右下角水印',
-            onTap: () => _showComingSoon(context, '无右下角水印'),
-          ),
-          _divider(),
-          _TeamSyncTile(
-            title: '同步团队照片不保存到本地',
-            onTap: () => _showComingSoon(context, '同步团队照片不保存到本地'),
-          ),
-          _divider(),
-          _TeamSyncTile(
-            title: '没有地点的照片不允许自动上传',
-            onTap: () => _showComingSoon(context, '没有地点的照片不允许自动上传'),
-          ),
         ],
       ),
-    );
-  }
-
-  Widget _divider() {
-    return Divider(
-      height: 1,
-      thickness: 1,
-      indent: 16,
-      endIndent: 16,
-      color: Colors.grey.shade200,
     );
   }
 }
@@ -158,53 +116,6 @@ class _PersonalSyncTile extends StatelessWidget {
               onChanged: onChanged,
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TeamSyncTile extends StatelessWidget {
-  const _TeamSyncTile({
-    required this.title,
-    required this.onTap,
-  });
-
-  final String title;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.workspace_premium,
-                size: 18,
-                color: Color(0xFFE8A317),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF111111),
-                  ),
-                ),
-              ),
-              Icon(
-                Icons.chevron_right,
-                size: 22,
-                color: Colors.grey.shade400,
-              ),
-            ],
-          ),
         ),
       ),
     );

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:watermark_camera/models/team.dart';
 import 'package:watermark_camera/models/team_watermark_template.dart';
-import 'package:watermark_camera/router/app_paths.dart';
 import 'package:watermark_camera/widgets/WaterMark/watermark_template_view.dart';
 import 'package:watermark_camera/widgets/team_watermark_add_sheet.dart';
 
@@ -57,12 +56,6 @@ class _TeamWatermarkTemplatePickerPageState
     return items.toList();
   }
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature功能开发中，敬请期待')),
-    );
-  }
-
   Future<void> _onAddTemplate(
     TeamWatermarkTemplate template,
     Widget preview,
@@ -97,66 +90,55 @@ class _TeamWatermarkTemplatePickerPageState
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeader(),
-                _buildSearchBar(),
-                _buildCategoryTabs(),
-                const Divider(height: 1),
-                Expanded(
-                  child: templates.isEmpty
-                      ? Center(
-                          child: Text(
-                            '暂无匹配模板',
-                            style: TextStyle(color: Colors.grey.shade500),
-                          ),
-                        )
-                      : GridView.builder(
-                          padding: EdgeInsets.fromLTRB(
-                            12,
-                            12,
-                            12,
-                            88 + bottomInset,
-                          ),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 10,
-                            childAspectRatio: 0.62,
-                          ),
-                          itemCount: templates.length,
-                          itemBuilder: (context, index) {
-                            final template = templates[index];
-                            final preview = WatermarkTemplateView(
-                              templateId: template.previewTemplateId,
-                              now: sampleNow,
-                              address: sampleAddress,
-                              weatherText: sampleWeather,
-                              temperatureText: sampleTemperature,
-                              coordinateText: sampleCoordinate,
-                              showCoordinate: true,
-                              compact: true,
-                            );
-                            return _TemplateCard(
-                              template: template,
-                              preview: preview,
-                              onAdd: () => _onAddTemplate(template, preview),
-                            );
-                          },
-                        ),
-                ),
-              ],
-            ),
-            Positioned(
-              right: 12,
-              bottom: 16 + bottomInset,
-              child: _ContactServiceButton(
-                onTap: () => _showComingSoon('联系客服'),
-              ),
+            _buildHeader(),
+            _buildSearchBar(),
+            _buildCategoryTabs(),
+            const Divider(height: 1),
+            Expanded(
+              child: templates.isEmpty
+                  ? Center(
+                      child: Text(
+                        '暂无匹配模板',
+                        style: TextStyle(color: Colors.grey.shade500),
+                      ),
+                    )
+                  : GridView.builder(
+                      padding: EdgeInsets.fromLTRB(
+                        12,
+                        12,
+                        12,
+                        24 + bottomInset,
+                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 10,
+                        childAspectRatio: 0.62,
+                      ),
+                      itemCount: templates.length,
+                      itemBuilder: (context, index) {
+                        final template = templates[index];
+                        final preview = WatermarkTemplateView(
+                          templateId: template.previewTemplateId,
+                          now: sampleNow,
+                          address: sampleAddress,
+                          weatherText: sampleWeather,
+                          temperatureText: sampleTemperature,
+                          coordinateText: sampleCoordinate,
+                          showCoordinate: true,
+                          compact: true,
+                        );
+                        return _TemplateCard(
+                          template: template,
+                          preview: preview,
+                          onAdd: () => _onAddTemplate(template, preview),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -185,13 +167,7 @@ class _TeamWatermarkTemplatePickerPageState
               ),
             ),
           ),
-          TextButton(
-            onPressed: () => context.push(AppPaths.teamWatermarkStylePicker),
-            child: const Text(
-              '新建模板',
-              style: TextStyle(fontSize: 15, color: _primaryBlue),
-            ),
-          ),
+          const SizedBox(width: 48),
         ],
       ),
     );
@@ -367,56 +343,6 @@ class _TemplateCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ContactServiceButton extends StatelessWidget {
-  const _ContactServiceButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: Colors.grey.shade200,
-                child: Icon(
-                  Icons.support_agent,
-                  size: 16,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                '联系客服',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

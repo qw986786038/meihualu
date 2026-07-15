@@ -239,17 +239,7 @@ class _PersonalSpaceUploadPickerPageState
               ],
             ),
           ),
-          TextButton(
-            onPressed: () => _showSnack('同步列表功能开发中，敬请期待'),
-            child: const Text(
-              '同步列表',
-              style: TextStyle(
-                color: _kPrimaryBlue,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
+          const SizedBox(width: 48),
         ],
       ),
     );

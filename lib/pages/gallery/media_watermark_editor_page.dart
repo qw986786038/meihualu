@@ -305,20 +305,6 @@ class _MediaWatermarkEditorPageState extends State<MediaWatermarkEditorPage> {
               icon: const Icon(Icons.close, color: Colors.white, size: 26),
             ),
             const Spacer(),
-            IconButton(
-              onPressed: () => _showSnack('分享功能即将开放'),
-              icon: const Icon(Icons.ios_share, color: Colors.white, size: 22),
-            ),
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_horiz, color: Colors.white, size: 24),
-              color: Colors.grey.shade900,
-              onSelected: (value) => _showSnack('$value功能即将开放'),
-              itemBuilder: (context) => const [
-                PopupMenuItem(value: '详情信息', child: Text('详情信息')),
-                PopupMenuItem(value: '复制到', child: Text('复制到')),
-              ],
-            ),
-            const SizedBox(width: 4),
             Obx(() {
               final saving = controller.isSaving.value;
               return FilledButton(

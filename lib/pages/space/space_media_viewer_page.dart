@@ -39,19 +39,15 @@ class _SpaceMediaViewerPageState extends State<SpaceMediaViewerPage> {
 
   SpaceMediaViewerItem get _currentItem => widget.items[_currentIndex];
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('$feature功能开发中，敬请期待')));
-  }
-
   Future<void> _saveCurrentToGallery() async {
     if (_isSaving) return;
 
     final item = _currentItem;
     final url = item.originalUrl.trim();
     if (url.isEmpty) {
-      _showComingSoon('下载');
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('暂无可下载的文件')));
       return;
     }
 
@@ -73,19 +69,6 @@ class _SpaceMediaViewerPageState extends State<SpaceMediaViewerPage> {
       ..showSnackBar(
         SnackBar(content: Text(success ? '已保存到相册' : '保存失败，请稍后重试')),
       );
-  }
-
-  void _openNavigation() {
-    final item = _currentItem;
-    if (item.latitude != null && item.longitude != null) {
-      _showComingSoon('导航');
-      return;
-    }
-    if (item.location != null && item.location!.trim().isNotEmpty) {
-      _showComingSoon('导航');
-      return;
-    }
-    _showComingSoon('导航');
   }
 
   @override
@@ -196,36 +179,9 @@ class _SpaceMediaViewerPageState extends State<SpaceMediaViewerPage> {
       child: Row(
         children: [
           _ActionButton(
-            icon: Icons.wechat,
-            iconColor: const Color(0xFF07C160),
-            label: '分享',
-            onTap: () => _showComingSoon('分享'),
-          ),
-          _ActionButton(
-            icon: Icons.branding_watermark_outlined,
-            label: '水印',
-            showBadge: true,
-            onTap: () => _showComingSoon('水印'),
-          ),
-          _ActionButton(
             icon: Icons.download_outlined,
             label: '下载',
             onTap: _isSaving ? null : _saveCurrentToGallery,
-          ),
-          _ActionButton(
-            icon: Icons.chat_bubble_outline,
-            label: '评论',
-            onTap: () => _showComingSoon('评论'),
-          ),
-          _ActionButton(
-            icon: Icons.build_outlined,
-            label: '提整改',
-            onTap: () => _showComingSoon('提整改'),
-          ),
-          _ActionButton(
-            icon: Icons.location_on_outlined,
-            label: '导航',
-            onTap: _openNavigation,
           ),
         ],
       ),
@@ -346,15 +302,11 @@ class _ActionButton extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
-    this.iconColor = Colors.white,
-    this.showBadge = false,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
-  final Color iconColor;
-  final bool showBadge;
 
   @override
   Widget build(BuildContext context) {
@@ -367,25 +319,7 @@ class _ActionButton extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Icon(icon, color: iconColor, size: 24),
-                  if (showBadge)
-                    Positioned(
-                      right: -2,
-                      top: -2,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFE64545),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+              Icon(icon, color: Colors.white, size: 24),
               const SizedBox(height: 6),
               Text(
                 label,

@@ -34,12 +34,6 @@ class _TeamDepartmentManagementPageState
     super.dispose();
   }
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature功能开发中，敬请期待')),
-    );
-  }
-
   List<TeamMember> _filterMembers(List<TeamMember> members) {
     final query = _searchController.text.trim();
     if (query.isEmpty) return members;
@@ -167,18 +161,6 @@ class _TeamDepartmentManagementPageState
                         onPressed: _openAddSubDepartmentSheet,
                         child: const Text(
                           '添加子部门',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: _primaryBlue,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => _showComingSoon('更多设置'),
-                        child: const Text(
-                          '更多设置',
                           style: TextStyle(
                             fontSize: 16,
                             color: _primaryBlue,

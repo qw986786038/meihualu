@@ -35,12 +35,6 @@ class _TeamInfoPageState extends State<TeamInfoPage> {
     return _initialTeam;
   }
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature功能开发中，敬请期待')),
-    );
-  }
-
   Future<void> _copyTeamCode(Team team) async {
     await Clipboard.setData(ClipboardData(text: team.teamCode));
     if (!mounted) return;
@@ -189,12 +183,6 @@ class _TeamInfoPageState extends State<TeamInfoPage> {
             color: Color(0xFF111111),
           ),
         ),
-        actions: [
-          IconButton(
-            onPressed: () => _showComingSoon('更多操作'),
-            icon: Icon(Icons.more_horiz, color: Colors.grey.shade700),
-          ),
-        ],
       ),
       body: Obx(() {
         final team = _resolveTeam();
@@ -234,6 +222,7 @@ class _TeamInfoPageState extends State<TeamInfoPage> {
                       _InfoRow(
                         label: '团队号',
                         showChevron: false,
+                        showDivider: false,
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -257,25 +246,6 @@ class _TeamInfoPageState extends State<TeamInfoPage> {
                             ),
                           ],
                         ),
-                      ),
-                      _InfoRow(
-                        label: '团队二维码',
-                        onTap: () => _showComingSoon('团队二维码'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.qr_code_2,
-                              size: 22,
-                              color: Colors.grey.shade700,
-                            ),
-                            Icon(
-                              Icons.chevron_right,
-                              color: Colors.grey.shade400,
-                            ),
-                          ],
-                        ),
-                        showDivider: false,
                       ),
                     ],
                   ),

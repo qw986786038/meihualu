@@ -105,9 +105,9 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
     super.dispose();
   }
 
-  void _showComingSoon(String feature) {
+  void _showSnack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature功能开发中，敬请期待')),
+      SnackBar(content: Text(message)),
     );
   }
 
@@ -217,7 +217,7 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
         )
         .toList();
     if (items.isEmpty) {
-      _showComingSoon('暂无照片可下载');
+      _showSnack('暂无照片可下载');
       return;
     }
 
@@ -240,7 +240,7 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
   Future<void> _openUploadPicker() async {
     final team = _team;
     if (team == null || team.id.isEmpty || team.id == 'debug_team') {
-      _showComingSoon('上传照片');
+      _showSnack('空间未就绪，请稍后重试');
       return;
     }
     await context.push<bool>(AppPaths.teamSpaceUpload, extra: team.id);
@@ -275,26 +275,22 @@ class _TeamWorkspacePageState extends State<TeamWorkspacePage>
             onTeamWatermarkTap: _openTeamWatermarkTemplates,
             onUploadPhotosTap: _openUploadPicker,
             onSwitchModeTap: _openWorkModeSwitchSheet,
-            onComingSoon: _showComingSoon,
           ),
           _TeamMembersTab(
             team: team,
             onInviteMembersTap: _openInviteMembers,
             onDepartmentManagementTap: _openDepartmentManagement,
             onMemberTap: _openMemberProfile,
-            onComingSoon: _showComingSoon,
           ),
           _TeamWorkbenchTab(
             onSearchPhotosTap: _openPhotoSearch,
             onUploadPhotosTap: _openUploadPicker,
             onDownloadPhotosTap: _downloadTeamPhotos,
-            onComingSoon: _showComingSoon,
           ),
           _TeamManageTab(
             team: team,
             onTeamInfoTap: _openTeamInfo,
             onTeamWatermarkTap: _openTeamWatermarkTemplates,
-            onComingSoon: _showComingSoon,
           ),
         ],
       ),
@@ -353,7 +349,6 @@ class _WorkCircleTab extends StatelessWidget {
     required this.onTeamWatermarkTap,
     required this.onUploadPhotosTap,
     required this.onSwitchModeTap,
-    required this.onComingSoon,
   });
 
   final Team team;
@@ -370,7 +365,6 @@ class _WorkCircleTab extends StatelessWidget {
   final VoidCallback onTeamWatermarkTap;
   final VoidCallback onUploadPhotosTap;
   final VoidCallback onSwitchModeTap;
-  final void Function(String feature) onComingSoon;
 
   @override
   Widget build(BuildContext context) {
@@ -384,7 +378,6 @@ class _WorkCircleTab extends StatelessWidget {
           onSearchPhotosTap: onSearchPhotosTap,
           onInviteMembersTap: onInviteMembersTap,
           onSwitchModeTap: onSwitchModeTap,
-          onComingSoon: onComingSoon,
           onPhotoLedgerTap: onPhotoLedgerTap,
           onTeamWatermarkTap: onTeamWatermarkTap,
           onUploadPhotosTap: onUploadPhotosTap,
@@ -445,7 +438,6 @@ class _TeamHeader extends StatelessWidget {
     required this.onSearchPhotosTap,
     required this.onInviteMembersTap,
     required this.onSwitchModeTap,
-    required this.onComingSoon,
     required this.onPhotoLedgerTap,
     required this.onTeamWatermarkTap,
     required this.onUploadPhotosTap,
@@ -458,7 +450,6 @@ class _TeamHeader extends StatelessWidget {
   final VoidCallback onSearchPhotosTap;
   final VoidCallback onInviteMembersTap;
   final VoidCallback onSwitchModeTap;
-  final void Function(String feature) onComingSoon;
   final VoidCallback onPhotoLedgerTap;
   final VoidCallback onTeamWatermarkTap;
   final VoidCallback onUploadPhotosTap;
@@ -543,7 +534,6 @@ class _TeamHeader extends StatelessWidget {
             ),
             _WorkCircleStatsRow(team: team),
             _WorkCircleQuickActions(
-              onComingSoon: onComingSoon,
               onPhotoLedgerTap: onPhotoLedgerTap,
               onTeamWatermarkTap: onTeamWatermarkTap,
               onUploadPhotosTap: onUploadPhotosTap,
@@ -660,13 +650,11 @@ class _WorkCircleStatCard extends StatelessWidget {
 
 class _WorkCircleQuickActions extends StatelessWidget {
   const _WorkCircleQuickActions({
-    required this.onComingSoon,
     required this.onPhotoLedgerTap,
     required this.onTeamWatermarkTap,
     required this.onUploadPhotosTap,
   });
 
-  final void Function(String feature) onComingSoon;
   final VoidCallback onPhotoLedgerTap;
   final VoidCallback onTeamWatermarkTap;
   final VoidCallback onUploadPhotosTap;
@@ -696,12 +684,6 @@ class _WorkCircleQuickActions extends StatelessWidget {
             label: '上传照片',
             onTap: onUploadPhotosTap,
           ),
-          const SizedBox(width: 8),
-          _WorkCircleQuickActionChip(
-            label: '通知',
-            badgeCount: 1,
-            onTap: () => onComingSoon('通知'),
-          ),
         ],
       ),
     );
@@ -714,40 +696,15 @@ class _WorkCircleQuickActionChip extends StatelessWidget {
     required this.onTap,
     this.icon,
     this.iconColor,
-    this.badgeCount,
   });
 
   final String label;
   final VoidCallback onTap;
   final IconData? icon;
   final Color? iconColor;
-  final int? badgeCount;
 
   @override
   Widget build(BuildContext context) {
-    Widget content = Text(
-      label,
-      style: const TextStyle(
-        fontSize: 13,
-        color: Color(0xFF333333),
-      ),
-    );
-
-    if (badgeCount != null && badgeCount! > 0) {
-      content = Badge(
-        label: Text(
-          '$badgeCount',
-          style: const TextStyle(fontSize: 10),
-        ),
-        backgroundColor: const Color(0xFFE64545),
-        offset: const Offset(10, -6),
-        child: Padding(
-          padding: const EdgeInsets.only(right: 6),
-          child: content,
-        ),
-      );
-    }
-
     return Material(
       color: Colors.white.withValues(alpha: 0.95),
       borderRadius: BorderRadius.circular(18),
@@ -763,7 +720,13 @@ class _WorkCircleQuickActionChip extends StatelessWidget {
                 Icon(icon, size: 16, color: iconColor),
                 const SizedBox(width: 4),
               ],
-              content,
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF333333),
+                ),
+              ),
             ],
           ),
         ),
@@ -1008,12 +971,6 @@ class _FeedItemCard extends StatelessWidget {
 
   final TeamPhotoFeedItem feedItem;
 
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature功能开发中，敬请期待')),
-    );
-  }
-
   String _formatTime(DateTime time) {
     final hour = time.hour.toString().padLeft(2, '0');
     final minute = time.minute.toString().padLeft(2, '0');
@@ -1063,27 +1020,12 @@ class _FeedItemCard extends StatelessWidget {
               _MemberAvatar(text: member.avatarText),
               const SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      member.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => _showComingSoon(context, '团队水印'),
-                      child: Text(
-                        '非团队水印 >',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  member.name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -1107,15 +1049,6 @@ class _FeedItemCard extends StatelessWidget {
               _buildLastCaptureSummary(),
               style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
             ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              _FeedAction(label: '分享', onTap: () => _showComingSoon(context, '分享')),
-              _FeedAction(label: '评论', onTap: () => _showComingSoon(context, '评论')),
-              _FeedAction(label: '赞', onTap: () => _showComingSoon(context, '点赞')),
-              _FeedAction(label: '提整改', onTap: () => _showComingSoon(context, '提整改')),
-            ],
           ),
         ],
       ),
@@ -1220,40 +1153,18 @@ Future<void> _downloadPhoto(BuildContext context, TeamAlbumPhoto photo) async {
     );
 }
 
-class _FeedAction extends StatelessWidget {
-  const _FeedAction({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: TextButton(
-        onPressed: onTap,
-        child: Text(
-          label,
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-        ),
-      ),
-    );
-  }
-}
-
 class _TeamMembersTab extends StatefulWidget {
   const _TeamMembersTab({
     required this.team,
     required this.onInviteMembersTap,
     required this.onDepartmentManagementTap,
     required this.onMemberTap,
-    required this.onComingSoon,
   });
 
   final Team team;
   final VoidCallback onInviteMembersTap;
   final VoidCallback onDepartmentManagementTap;
   final void Function(TeamMember member) onMemberTap;
-  final void Function(String feature) onComingSoon;
 
   @override
   State<_TeamMembersTab> createState() => _TeamMembersTabState();
@@ -1296,7 +1207,6 @@ class _TeamMembersTabState extends State<_TeamMembersTab> {
             _MembersTabHeader(
               title: '${_team.name} ($totalCount人)',
               onBack: () => context.pop(),
-              onManageTap: () => widget.onComingSoon('成员管理'),
             ),
             Expanded(
               child: ListView(
@@ -1353,19 +1263,6 @@ class _TeamMembersTabState extends State<_TeamMembersTab> {
                     icon: _ActionIcon(
                       color: _actionGreen,
                       child: const Icon(
-                        Icons.person_search_outlined,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    title: '成员加入申请',
-                    onTap: () => widget.onComingSoon('成员加入申请'),
-                  ),
-                  _membersDivider(),
-                  _MembersActionTile(
-                    icon: _ActionIcon(
-                      color: _actionGreen,
-                      child: const Icon(
                         Icons.account_tree_outlined,
                         color: Colors.white,
                         size: 20,
@@ -1398,7 +1295,6 @@ class _TeamMembersTabState extends State<_TeamMembersTab> {
             ),
             if (_showManageBanner)
               _MembersManageBanner(
-                onLearnMore: () => widget.onComingSoon('电脑后台成员管理'),
                 onClose: () => setState(() => _showManageBanner = false),
               ),
           ],
@@ -1421,12 +1317,10 @@ class _MembersTabHeader extends StatelessWidget {
   const _MembersTabHeader({
     required this.title,
     required this.onBack,
-    required this.onManageTap,
   });
 
   final String title;
   final VoidCallback onBack;
-  final VoidCallback onManageTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1454,16 +1348,7 @@ class _MembersTabHeader extends StatelessWidget {
                 ),
               ),
             ),
-            TextButton(
-              onPressed: onManageTap,
-              child: const Text(
-                '管理',
-                style: TextStyle(
-                  fontSize: 15,
-                  color: Color(0xFF1677FF),
-                ),
-              ),
-            ),
+            const SizedBox(width: 48),
           ],
         ),
       ),
@@ -1601,11 +1486,9 @@ class _MemberListTile extends StatelessWidget {
 
 class _MembersManageBanner extends StatelessWidget {
   const _MembersManageBanner({
-    required this.onLearnMore,
     required this.onClose,
   });
 
-  final VoidCallback onLearnMore;
   final VoidCallback onClose;
 
   @override
@@ -1625,16 +1508,6 @@ class _MembersManageBanner extends StatelessWidget {
                 ),
               ),
             ),
-            TextButton(
-              onPressed: onLearnMore,
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF1677FF),
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: const Text('了解详情', style: TextStyle(fontSize: 13)),
-            ),
             IconButton(
               onPressed: onClose,
               icon: Icon(Icons.close, size: 18, color: Colors.grey.shade500),
@@ -1653,13 +1526,11 @@ class _TeamWorkbenchTab extends StatefulWidget {
     required this.onSearchPhotosTap,
     required this.onUploadPhotosTap,
     required this.onDownloadPhotosTap,
-    required this.onComingSoon,
   });
 
   final VoidCallback onSearchPhotosTap;
   final VoidCallback onUploadPhotosTap;
   final VoidCallback onDownloadPhotosTap;
-  final void Function(String feature) onComingSoon;
 
   @override
   State<_TeamWorkbenchTab> createState() => _TeamWorkbenchTabState();
@@ -1667,7 +1538,6 @@ class _TeamWorkbenchTab extends StatefulWidget {
 
 class _TeamWorkbenchTabState extends State<_TeamWorkbenchTab> {
   static const _primaryBlue = Color(0xFF1677FF);
-  static const _attendanceYellow = Color(0xFFFFB020);
 
   final _searchController = TextEditingController();
 
@@ -1687,12 +1557,6 @@ class _TeamWorkbenchTabState extends State<_TeamWorkbenchTab> {
       title: '照片管理',
       items: [
         _WorkbenchFeatureItem(
-          label: '全部照片',
-          icon: Icons.photo_outlined,
-          iconColor: _primaryBlue,
-          onTap: () => widget.onComingSoon('全部照片'),
-        ),
-        _WorkbenchFeatureItem(
           label: '上传照片',
           icon: Icons.cloud_upload_outlined,
           iconColor: _primaryBlue,
@@ -1705,58 +1569,10 @@ class _TeamWorkbenchTabState extends State<_TeamWorkbenchTab> {
           onTap: widget.onSearchPhotosTap,
         ),
         _WorkbenchFeatureItem(
-          label: '分类相册',
-          icon: Icons.folder_outlined,
-          iconColor: _primaryBlue,
-          onTap: () => widget.onComingSoon('分类相册'),
-        ),
-        _WorkbenchFeatureItem(
-          label: '照片台账表',
-          icon: Icons.table_chart_outlined,
-          iconColor: _primaryBlue,
-          onTap: () => widget.onComingSoon('照片台账表'),
-        ),
-        _WorkbenchFeatureItem(
           label: '照片批量下载',
           icon: Icons.download_outlined,
           iconColor: _primaryBlue,
           onTap: widget.onDownloadPhotosTap,
-        ),
-        _WorkbenchFeatureItem(
-          label: '照片查看码',
-          icon: Icons.qr_code_2,
-          iconColor: _primaryBlue,
-          onTap: () => widget.onComingSoon('照片查看码'),
-        ),
-        _WorkbenchFeatureItem(
-          label: '分类相册旧版',
-          icon: Icons.folder_off_outlined,
-          iconColor: Colors.grey,
-          disabled: true,
-          onTap: () => widget.onComingSoon('分类相册旧版'),
-        ),
-      ],
-    ),
-    _WorkbenchSection(
-      title: '考勤管理',
-      items: [
-        _WorkbenchFeatureItem(
-          label: '考勤统计',
-          icon: Icons.calendar_month_outlined,
-          iconColor: _attendanceYellow,
-          onTap: () => widget.onComingSoon('考勤统计'),
-        ),
-        _WorkbenchFeatureItem(
-          label: '请假',
-          icon: Icons.event_busy_outlined,
-          iconColor: _attendanceYellow,
-          onTap: () => widget.onComingSoon('请假'),
-        ),
-        _WorkbenchFeatureItem(
-          label: '审批',
-          icon: Icons.approval_outlined,
-          iconColor: _attendanceYellow,
-          onTap: () => widget.onComingSoon('审批'),
         ),
       ],
     ),
@@ -1794,7 +1610,6 @@ class _TeamWorkbenchTabState extends State<_TeamWorkbenchTab> {
         children: [
           _WorkbenchTabHeader(
             onBack: () => context.pop(),
-            onContactService: () => widget.onComingSoon('联系客服'),
           ),
           Expanded(
             child: ListView(
@@ -1870,24 +1685,20 @@ class _WorkbenchFeatureItem {
     required this.icon,
     required this.iconColor,
     required this.onTap,
-    this.disabled = false,
   });
 
   final String label;
   final IconData icon;
   final Color iconColor;
   final VoidCallback onTap;
-  final bool disabled;
 }
 
 class _WorkbenchTabHeader extends StatelessWidget {
   const _WorkbenchTabHeader({
     required this.onBack,
-    required this.onContactService,
   });
 
   final VoidCallback onBack;
-  final VoidCallback onContactService;
 
   @override
   Widget build(BuildContext context) {
@@ -1915,16 +1726,7 @@ class _WorkbenchTabHeader extends StatelessWidget {
                   ),
                 ),
               ),
-              TextButton(
-                onPressed: onContactService,
-                child: const Text(
-                  '联系客服',
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Color(0xFF1677FF),
-                  ),
-                ),
-              ),
+              const SizedBox(width: 48),
             ],
           ),
         ),
@@ -1940,7 +1742,7 @@ class _WorkbenchSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final crossAxisCount = section.title == '考勤管理' ? 3 : 4;
+    final crossAxisCount = 4;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -1989,12 +1791,8 @@ class _WorkbenchFeatureTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconBackground = item.disabled
-        ? Colors.grey.shade100
-        : item.iconColor.withValues(alpha: 0.12);
-
     return InkWell(
-      onTap: item.disabled ? null : item.onTap,
+      onTap: item.onTap,
       borderRadius: BorderRadius.circular(8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -2004,13 +1802,13 @@ class _WorkbenchFeatureTile extends StatelessWidget {
             height: 46,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: iconBackground,
+              color: item.iconColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               item.icon,
               size: 24,
-              color: item.disabled ? Colors.grey.shade400 : item.iconColor,
+              color: item.iconColor,
             ),
           ),
           const SizedBox(height: 6),
@@ -2020,10 +1818,10 @@ class _WorkbenchFeatureTile extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
                 height: 1.25,
-                color: item.disabled ? Colors.grey.shade400 : const Color(0xFF333333),
+                color: Color(0xFF333333),
               ),
             ),
           ),
@@ -2038,13 +1836,11 @@ class _TeamManageTab extends StatefulWidget {
     required this.team,
     required this.onTeamInfoTap,
     required this.onTeamWatermarkTap,
-    required this.onComingSoon,
   });
 
   final Team team;
   final Future<void> Function() onTeamInfoTap;
   final VoidCallback onTeamWatermarkTap;
-  final void Function(String feature) onComingSoon;
 
   @override
   State<_TeamManageTab> createState() => _TeamManageTabState();
@@ -2074,30 +1870,14 @@ class _TeamManageTabState extends State<_TeamManageTab> {
             team: _team,
             onCopyTeamCode: _copyTeamCode,
             onTeamInfoTap: widget.onTeamInfoTap,
-            onComingSoon: widget.onComingSoon,
           ),
-          _ManageVipSection(onComingSoon: widget.onComingSoon),
           const SizedBox(height: 12),
           _ManageSettingsCard(
             items: [
               _ManageSettingItem(
-                title: '团队存储空间',
-                onTap: () => widget.onComingSoon('团队存储空间'),
-              ),
-              _ManageSettingItem(
                 title: '团队水印',
-                subtitle: '一人创建 团队共用',
+                subtitle: '一人设置 团队共用',
                 onTap: widget.onTeamWatermarkTap,
-              ),
-              _ManageSettingItem(
-                title: '照片设置',
-                subtitle: '同步高清原图',
-                onTap: () => widget.onComingSoon('照片设置'),
-              ),
-              _ManageSettingItem(
-                title: '同步限制',
-                subtitle: '全员已开启照片同步',
-                onTap: () => widget.onComingSoon('同步限制'),
                 showDivider: false,
               ),
             ],
@@ -2105,14 +1885,6 @@ class _TeamManageTabState extends State<_TeamManageTab> {
           const SizedBox(height: 12),
           _ManageSettingsCard(
             items: [
-              _ManageSettingItem(
-                title: '权限和人员管理',
-                onTap: () => widget.onComingSoon('权限和人员管理'),
-              ),
-              _ManageSettingItem(
-                title: '团队主题样式',
-                onTap: () => widget.onComingSoon('团队主题样式'),
-              ),
               _ManageSettingItem(
                 title: '照片重新同步打扰',
                 trailing: Switch.adaptive(
@@ -2136,13 +1908,11 @@ class _ManageTeamHeader extends StatelessWidget {
     required this.team,
     required this.onCopyTeamCode,
     required this.onTeamInfoTap,
-    required this.onComingSoon,
   });
 
   final Team team;
   final VoidCallback onCopyTeamCode;
   final Future<void> Function() onTeamInfoTap;
-  final void Function(String feature) onComingSoon;
 
   @override
   Widget build(BuildContext context) {
@@ -2161,10 +1931,12 @@ class _ManageTeamHeader extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
                         team.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
@@ -2172,33 +1944,26 @@ class _ManageTeamHeader extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Wrap(
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 4,
+                      Row(
                         children: [
-                          Text(
-                            '团队号: ${team.teamCode}',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade600,
+                          Expanded(
+                            child: Text(
+                              '团队号: ${team.teamCode}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade600,
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 6),
                           GestureDetector(
                             onTap: onCopyTeamCode,
                             child: const Text(
                               '复制',
                               style: TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF1677FF),
-                              ),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () => onComingSoon('抢靓号'),
-                            child: const Text(
-                              '抢靓号',
-                              style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 11,
                                 color: Color(0xFF1677FF),
                               ),
                             ),
@@ -2270,148 +2035,6 @@ class _ManageTeamBrand extends StatelessWidget {
           fontSize: 22,
           fontWeight: FontWeight.w700,
         ),
-      ),
-    );
-  }
-}
-
-class _ManageVipSection extends StatelessWidget {
-  const _ManageVipSection({required this.onComingSoon});
-
-  final void Function(String feature) onComingSoon;
-
-  @override
-  Widget build(BuildContext context) {
-    const features = <({IconData icon, String label})>[
-      (icon: Icons.cloud_outlined, label: '永久存储'),
-      (icon: Icons.photo_library_outlined, label: '无限查看'),
-      (icon: Icons.download_outlined, label: '批量下载'),
-      (icon: Icons.table_chart_outlined, label: '台账表导出'),
-      (icon: Icons.branding_watermark_outlined, label: '去水印'),
-    ];
-
-    return Container(
-      color: const Color(0xFFFFF3E8),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '开通会员立享手机/电脑30+权益',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade800,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: () => onComingSoon('开通会员'),
-                style: TextButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFB020),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: const Text('去开通', style: TextStyle(fontSize: 13)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              for (var i = 0; i < features.length; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
-                Expanded(
-                  child: _ManageVipFeature(
-                    icon: features[i].icon,
-                    label: features[i].label,
-                    onTap: () => onComingSoon(features[i].label),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFE4C4),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.workspace_premium,
-                  size: 16,
-                  color: Color(0xFFE8A317),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    '开通高级会员，畅享团队拼图模版',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ManageVipFeature extends StatelessWidget {
-  const _ManageVipFeature({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Column(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 22, color: const Color(0xFFFF8C1A)),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey.shade700,
-            ),
-          ),
-        ],
       ),
     );
   }

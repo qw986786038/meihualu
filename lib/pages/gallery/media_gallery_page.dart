@@ -29,23 +29,7 @@ class _MediaGalleryPageState extends State<MediaGalleryPage> {
     super.dispose();
   }
 
-  void _showSnack(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
   Future<void> _onAssetTap(AssetEntity asset) async {
-    final feature = controller.activeFeature.value;
-    if (feature != null) {
-      controller.selectSingle(asset);
-      _showSnack(
-        '已选择 1 项，${controller.featureLabel(feature)}功能即将开放',
-      );
-      return;
-    }
-
     final saved = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
         builder: (_) => MediaWatermarkEditorPage(asset: asset),
@@ -54,19 +38,6 @@ class _MediaGalleryPageState extends State<MediaGalleryPage> {
     if (saved == true) {
       await controller.loadInitialAssets();
     }
-  }
-
-  void _onFeatureTap(MediaGalleryFeature feature) {
-    controller.activateFeature(feature);
-    final needsMulti = feature == MediaGalleryFeature.collageReport ||
-        feature == MediaGalleryFeature.batchAddWatermark ||
-        feature == MediaGalleryFeature.batchRemoveWatermark ||
-        feature == MediaGalleryFeature.batchEditWatermark;
-    _showSnack(
-      needsMulti
-          ? '请选择图片，${controller.featureLabel(feature)}'
-          : '请选择一张照片，${controller.featureLabel(feature)}',
-    );
   }
 
   @override
@@ -117,10 +88,10 @@ class _MediaGalleryPageState extends State<MediaGalleryPage> {
             onPressed: () => context.pop(),
             icon: const Icon(Icons.close, size: 26),
           ),
-          Expanded(
+          const Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
+              children: [
                 Text(
                   '图片和视频',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
@@ -130,17 +101,7 @@ class _MediaGalleryPageState extends State<MediaGalleryPage> {
               ],
             ),
           ),
-          TextButton(
-            onPressed: () => context.push(AppPaths.mediaMultiSelect),
-            child: const Text(
-              '多选',
-              style: TextStyle(
-                color: _kPrimaryBlue,
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
+          const SizedBox(width: 48),
         ],
       ),
     );
@@ -188,8 +149,6 @@ class _MediaGalleryPageState extends State<MediaGalleryPage> {
                     final asset = group.assets[index];
                     return _MediaThumbnail(
                       asset: asset,
-                      isSelected: controller.isSelected(asset),
-                      showSelection: controller.activeFeature.value != null,
                       onTap: () => _onAssetTap(asset),
                     );
                   },
@@ -231,29 +190,20 @@ class _MediaGalleryPageState extends State<MediaGalleryPage> {
           ),
           const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _SecondaryFeatureButton(
-                icon: Icons.grid_view_rounded,
-                label: '拼图汇报',
-                onTap: () =>
-                    _onFeatureTap(MediaGalleryFeature.collageReport),
+              Expanded(
+                child: _SecondaryFeatureButton(
+                  icon: Icons.branding_watermark_outlined,
+                  label: '批量加水印',
+                  onTap: () => context.push(AppPaths.batchAddWatermark),
+                ),
               ),
-              _SecondaryFeatureButton(
-                icon: Icons.branding_watermark_outlined,
-                label: '批量加水印',
-                onTap: () => context.push(AppPaths.batchAddWatermark),
-              ),
-              _SecondaryFeatureButton(
-                icon: Icons.layers_clear_outlined,
-                label: '批量去水印',
-                onTap: () => context.push(AppPaths.batchRemoveWatermark),
-              ),
-              _SecondaryFeatureButton(
-                icon: Icons.drive_file_rename_outline,
-                label: '批量编辑水印',
-                onTap: () =>
-                    _onFeatureTap(MediaGalleryFeature.batchEditWatermark),
+              Expanded(
+                child: _SecondaryFeatureButton(
+                  icon: Icons.layers_clear_outlined,
+                  label: '批量去水印',
+                  onTap: () => context.push(AppPaths.batchRemoveWatermark),
+                ),
               ),
             ],
           ),
@@ -338,30 +288,27 @@ class _SecondaryFeatureButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 76,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Column(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: _kLightBlueBg,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: _kPrimaryBlue, size: 24),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Column(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: _kLightBlueBg,
+              borderRadius: BorderRadius.circular(10),
             ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 11, color: Color(0xFF444444)),
-            ),
-          ],
-        ),
+            child: Icon(icon, color: _kPrimaryBlue, size: 24),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 11, color: Color(0xFF444444)),
+          ),
+        ],
       ),
     );
   }
@@ -370,14 +317,10 @@ class _SecondaryFeatureButton extends StatelessWidget {
 class _MediaThumbnail extends StatelessWidget {
   const _MediaThumbnail({
     required this.asset,
-    required this.isSelected,
-    required this.showSelection,
     required this.onTap,
   });
 
   final AssetEntity asset;
-  final bool isSelected;
-  final bool showSelection;
   final VoidCallback onTap;
 
   @override
@@ -428,26 +371,6 @@ class _MediaThumbnail extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
-            ),
-          if (showSelection)
-            Positioned(
-              top: 4,
-              right: 4,
-              child: Container(
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isSelected ? _kPrimaryBlue : Colors.white70,
-                  border: Border.all(
-                    color: isSelected ? _kPrimaryBlue : Colors.grey.shade500,
-                    width: 1.5,
-                  ),
-                ),
-                child: isSelected
-                    ? const Icon(Icons.check, size: 14, color: Colors.white)
-                    : null,
               ),
             ),
         ],

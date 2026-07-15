@@ -118,10 +118,6 @@ class _TeamBrandPickerPageState extends State<TeamBrandPickerPage> {
     );
   }
 
-  void _generateFromText() {
-    _showMessage('文字生成功能开发中，敬请期待');
-  }
-
   void _showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
@@ -182,24 +178,10 @@ class _TeamBrandPickerPageState extends State<TeamBrandPickerPage> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _ActionTile(
-                    icon: Icons.image_outlined,
-                    label: '从相册选',
-                    onTap: _pickFromAlbum,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _ActionTile(
-                    icon: Icons.text_fields_outlined,
-                    label: '文字生成',
-                    onTap: _generateFromText,
-                  ),
-                ),
-              ],
+            child: _ActionTile(
+              icon: Icons.image_outlined,
+              label: '从相册选',
+              onTap: _pickFromAlbum,
             ),
           ),
           const SizedBox(height: 12),

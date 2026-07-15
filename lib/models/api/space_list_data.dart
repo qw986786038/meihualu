@@ -109,7 +109,7 @@ class TeamSpaceListItem {
       id: spaceId,
       name: name,
       industryType: '',
-      teamCode: '',
+      teamCode: spaceId,
       brandImagePath: logoPath != null && logoPath.isNotEmpty
           ? ApiConfig.resolveAssetUrl(logoPath)
           : null,

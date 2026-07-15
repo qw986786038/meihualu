@@ -14,7 +14,6 @@ class TeamQrInvitePage extends StatefulWidget {
 }
 
 class _TeamQrInvitePageState extends State<TeamQrInvitePage> {
-  static const _primaryBlue = Color(0xFF1677FF);
   static const _wechatGreen = Color(0xFF07C160);
 
   final _screenshotController = ScreenshotController();
@@ -28,10 +27,6 @@ class _TeamQrInvitePageState extends State<TeamQrInvitePage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
-  }
-
-  void _shareQrCode() {
-    _showMessage('分享二维码功能开发中，敬请期待');
   }
 
   Future<void> _saveQrCode() async {
@@ -159,28 +154,6 @@ class _TeamQrInvitePageState extends State<TeamQrInvitePage> {
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
               child: Column(
                 children: [
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: FilledButton(
-                      onPressed: _shareQrCode,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _primaryBlue,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text(
-                        '分享二维码',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     height: 48,

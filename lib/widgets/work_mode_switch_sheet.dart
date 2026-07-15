@@ -80,12 +80,6 @@ class _WorkModeSwitchSheetState extends State<WorkModeSwitchSheet> {
     }
   }
 
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature功能开发中，敬请期待')),
-    );
-  }
-
   void _close(BuildContext context) {
     Navigator.of(context, rootNavigator: false).pop();
   }
@@ -295,16 +289,6 @@ class _WorkModeSwitchSheetState extends State<WorkModeSwitchSheet> {
                   ),
                 ],
                 const SizedBox(height: 16),
-                Center(
-                  child: TextButton.icon(
-                    onPressed: () => _showComingSoon(context, '切换列表样式'),
-                    icon: Icon(Icons.view_list_outlined, size: 18, color: Colors.grey.shade500),
-                    label: Text(
-                      '切换列表样式',
-                      style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
-                    ),
-                  ),
-                ),
               ],
             );
           }),

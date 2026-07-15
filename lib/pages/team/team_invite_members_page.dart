@@ -30,12 +30,6 @@ class _TeamInviteMembersPageState extends State<TeamInviteMembersPage> {
     return [_allSuggestedColleagues[start]];
   }
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature功能开发中，敬请期待')),
-    );
-  }
-
   Future<void> _copyTeamCode() async {
     await Clipboard.setData(ClipboardData(text: _team.teamCode));
     if (!mounted) return;
@@ -93,15 +87,6 @@ class _TeamInviteMembersPageState extends State<TeamInviteMembersPage> {
         children: [
           _InviteMethodTile(
             icon: _CircleIcon(
-              color: const Color(0xFF07C160),
-              child: const Icon(Icons.wechat, color: Colors.white, size: 22),
-            ),
-            title: '微信邀请',
-            onTap: () => _showComingSoon('微信邀请'),
-          ),
-          _divider(),
-          _InviteMethodTile(
-            icon: _CircleIcon(
               color: const Color(0xFF333333),
               child: const Icon(Icons.qr_code_2, color: Colors.white, size: 22),
             ),
@@ -112,46 +97,10 @@ class _TeamInviteMembersPageState extends State<TeamInviteMembersPage> {
           _InviteMethodTile(
             icon: _CircleIcon(
               color: const Color(0xFF1677FF),
-              child: const Icon(Icons.phonelink_ring, color: Colors.white, size: 20),
-            ),
-            title: '面对面邀请',
-            onTap: () => _showComingSoon('面对面邀请'),
-          ),
-          _divider(),
-          _InviteMethodTile(
-            icon: _CircleIcon(
-              color: const Color(0xFF1677FF),
               child: const Icon(Icons.contacts_outlined, color: Colors.white, size: 22),
             ),
             title: '手机通讯录添加',
             onTap: () => context.push(AppPaths.teamContactInvite, extra: _team),
-          ),
-          _divider(),
-          _InviteMethodTile(
-            icon: _CircleIcon(
-              color: const Color(0xFF1677FF),
-              child: const Icon(Icons.phone_outlined, color: Colors.white, size: 22),
-            ),
-            title: '输入手机号添加',
-            onTap: () => _showComingSoon('输入手机号添加'),
-          ),
-          _divider(),
-          _InviteMethodTile(
-            icon: _CircleIcon(
-              color: const Color(0xFF1677FF),
-              child: const Icon(Icons.computer_outlined, color: Colors.white, size: 22),
-            ),
-            title: '在电脑上批量添加',
-            onTap: () => _showComingSoon('在电脑上批量添加'),
-          ),
-          _divider(),
-          _InviteMethodTile(
-            icon: _CircleIcon(
-              color: const Color(0xFF1677FF),
-              child: const Icon(Icons.more_horiz, color: Colors.white, size: 22),
-            ),
-            title: '钉钉、QQ邀请',
-            onTap: () => _showComingSoon('钉钉、QQ邀请'),
           ),
           const SizedBox(height: 28),
           Padding(

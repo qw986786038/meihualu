@@ -27,22 +27,6 @@ class _MediaMultiSelectPageState extends State<MediaMultiSelectPage> {
     super.dispose();
   }
 
-  void _showSnack(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  void _onBottomAction(String label) {
-    final count = controller.selectedCount;
-    if (count == 0) {
-      _showSnack('请先选择图片或视频');
-      return;
-    }
-    _showSnack('已选择 $count 项，$label 功能即将开放');
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,7 +63,6 @@ class _MediaMultiSelectPageState extends State<MediaMultiSelectPage> {
                 return _buildGallery();
               }),
             ),
-            _buildBottomBar(),
           ],
         ),
       ),
@@ -209,54 +192,6 @@ class _MediaMultiSelectPageState extends State<MediaMultiSelectPage> {
         ),
       );
     });
-  }
-
-  Widget _buildBottomBar() {
-    const actions = <_BottomAction>[
-      _BottomAction(
-        icon: Icons.chat_bubble_outline,
-        label: '微信分享',
-        iconColor: Color(0xFF07C160),
-      ),
-      _BottomAction(icon: Icons.grid_view_rounded, label: '拼图汇报'),
-      _BottomAction(icon: Icons.branding_watermark_outlined, label: '批量加水印'),
-      _BottomAction(icon: Icons.table_chart_outlined, label: '导出excel'),
-      _BottomAction(icon: Icons.delete_outline, label: '删除'),
-      _BottomAction(icon: Icons.more_horiz, label: '更多'),
-    ];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 72,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            itemCount: actions.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 4),
-            itemBuilder: (context, index) {
-              final action = actions[index];
-              return _BottomActionButton(
-                action: action,
-                onTap: () => _onBottomAction(action.label),
-              );
-            },
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildEmptyState({
@@ -418,56 +353,5 @@ class _SelectableThumbnail extends StatelessWidget {
     final m = seconds ~/ 60;
     final s = seconds % 60;
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-  }
-}
-
-class _BottomAction {
-  const _BottomAction({
-    required this.icon,
-    required this.label,
-    this.iconColor,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color? iconColor;
-}
-
-class _BottomActionButton extends StatelessWidget {
-  const _BottomActionButton({
-    required this.action,
-    required this.onTap,
-  });
-
-  final _BottomAction action;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 64,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              action.icon,
-              size: 26,
-              color: action.iconColor ?? const Color(0xFF444444),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              action.label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: Color(0xFF444444)),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

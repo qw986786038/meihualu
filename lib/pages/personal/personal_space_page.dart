@@ -52,16 +52,16 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
     );
   }
 
-  void _showComingSoon(String feature) {
+  void _showSnack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature功能开发中，敬请期待')),
+      SnackBar(content: Text(message)),
     );
   }
 
   Future<void> _openPhotoSearch() async {
     final spaceId = _auth.personalSpace.value?.id ?? _space.id;
     if (spaceId.isEmpty || spaceId == 'debug_personal') {
-      _showComingSoon('搜索');
+      _showSnack('暂无法搜索');
       return;
     }
     await context.push(AppPaths.teamPhotoSearch, extra: spaceId);
@@ -130,7 +130,6 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
                   slivers: [
                     SliverToBoxAdapter(child: _buildSearchBar()),
                     SliverToBoxAdapter(child: _buildQuickActions()),
-                    SliverToBoxAdapter(child: _buildStatsRow()),
                     SliverToBoxAdapter(child: _buildGalleryHeader(syncedPhotos.length)),
                     if (syncedPhotos.isEmpty)
                       SliverFillRemaining(
@@ -251,27 +250,15 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
   Future<void> _openUploadPicker() async {
     final spaceId = _auth.personalSpace.value?.id ?? _space.id;
     if (spaceId.isEmpty || spaceId == 'debug_personal') {
-      _showComingSoon('上传照片');
+      _showSnack('暂无法上传照片');
       return;
     }
     await context.push<bool>(AppPaths.personalSpaceUpload, extra: spaceId);
   }
 
-  Future<void> _openBatchPicker() async {
-    final spaceId = _auth.personalSpace.value?.id ?? _space.id;
-    if (spaceId.isEmpty || spaceId == 'debug_personal') {
-      _showComingSoon('批量操作');
-      return;
-    }
-    await context.push<bool>(AppPaths.personalSpaceBatch, extra: spaceId);
-  }
-
   Widget _buildQuickActions() {
     const actions = [
       _QuickAction(icon: Icons.file_upload_outlined, label: '上传照片'),
-      _QuickAction(icon: Icons.checklist_rtl, label: '批量操作'),
-      _QuickAction(icon: Icons.computer_outlined, label: '电脑后台'),
-      _QuickAction(icon: Icons.table_chart_outlined, label: '台账表'),
     ];
 
     return Padding(
@@ -282,41 +269,7 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
               (action) => Expanded(
                 child: _QuickActionTile(
                   action: action,
-                  onTap: switch (action.label) {
-                    '上传照片' => _openUploadPicker,
-                    '批量操作' => _openBatchPicker,
-                    _ => () => _showComingSoon(action.label),
-                  },
-                ),
-              ),
-            )
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _buildStatsRow() {
-    const stats = [
-      _StatItem(label: '我的水印', count: 1),
-      _StatItem(label: '水印记录', count: 1),
-      _StatItem(label: '我的拼图', count: 0),
-      _StatItem(label: '我的地点', count: 0),
-    ];
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: stats
-            .map(
-              (stat) => Expanded(
-                child: _StatTile(
-                  stat: stat,
-                  onTap: () => _showComingSoon(stat.label),
+                  onTap: _openUploadPicker,
                 ),
               ),
             )
@@ -337,18 +290,6 @@ class _PersonalSpacePageState extends State<PersonalSpacePage> {
               fontWeight: FontWeight.w700,
               color: Color(0xFF111111),
             ),
-          ),
-          const Spacer(),
-          OutlinedButton(
-            onPressed: () => _showComingSoon('扩容'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFFFF7A45),
-              side: const BorderSide(color: Color(0xFFFF7A45)),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: const Text('去扩容', style: TextStyle(fontSize: 13)),
           ),
         ],
       ),
@@ -386,50 +327,6 @@ class _QuickActionTile extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _StatItem {
-  const _StatItem({required this.label, required this.count});
-
-  final String label;
-  final int count;
-}
-
-class _StatTile extends StatelessWidget {
-  const _StatTile({required this.stat, required this.onTap});
-
-  final _StatItem stat;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                '${stat.count}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF111111),
-                ),
-              ),
-              Icon(Icons.chevron_right, size: 18, color: Colors.grey.shade400),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            stat.label,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-          ),
-        ],
       ),
     );
   }

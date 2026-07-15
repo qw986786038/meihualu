@@ -18,12 +18,9 @@ class TeamPhotoLedgerPage extends StatefulWidget {
   State<TeamPhotoLedgerPage> createState() => _TeamPhotoLedgerPageState();
 }
 
-class _TeamPhotoLedgerPageState extends State<TeamPhotoLedgerPage>
-    with SingleTickerProviderStateMixin {
+class _TeamPhotoLedgerPageState extends State<TeamPhotoLedgerPage> {
   static const _primaryBlue = Color(0xFF1677FF);
-  static const _wechatGreen = Color(0xFF07C160);
 
-  late final TabController _tabController;
   late DateTime _rangeStart;
   late DateTime _rangeEnd;
   Set<String> _selectedMemberIds = {};
@@ -35,22 +32,9 @@ class _TeamPhotoLedgerPageState extends State<TeamPhotoLedgerPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
     final now = DateTime.now();
     _rangeStart = DateTime(now.year, now.month, 1);
     _rangeEnd = DateTime(now.year, now.month, now.day);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature功能开发中，敬请期待')),
-    );
   }
 
   String _formatRangeDate(DateTime date) {
@@ -145,8 +129,6 @@ class _TeamPhotoLedgerPageState extends State<TeamPhotoLedgerPage>
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -173,45 +155,15 @@ class _TeamPhotoLedgerPageState extends State<TeamPhotoLedgerPage>
                             ),
                           ),
                         ),
-                        TabBar(
-                          controller: _tabController,
-                          labelColor: _primaryBlue,
-                          unselectedLabelColor: Colors.grey.shade600,
-                          indicatorColor: _primaryBlue,
-                          indicatorSize: TabBarIndicatorSize.label,
-                          padding: const EdgeInsets.symmetric(horizontal: 48),
-                          labelStyle: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          unselectedLabelStyle: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
-                          ),
-                          tabs: [
-                            const Tab(text: '照片明细'),
-                            Tab(
-                              child: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  const Text('拍照统计'),
-                                  Positioned(
-                                    right: -8,
-                                    top: -2,
-                                    child: Container(
-                                      width: 6,
-                                      height: 6,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFFE64545),
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                        const Center(
+                          child: Text(
+                            '照片明细',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: _primaryBlue,
                             ),
-                            const Tab(text: '拜访记录'),
-                          ],
+                          ),
                         ),
                       ],
                     ),
@@ -247,52 +199,10 @@ class _TeamPhotoLedgerPageState extends State<TeamPhotoLedgerPage>
             ),
           ),
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _PhotoDetailTab(
-                  photosBuilder: _filteredPhotos,
-                  memberForPhoto: _memberForPhoto,
-                  formatDateTime: _formatDateTime,
-                ),
-                _PlaceholderTab(message: '拍照统计功能开发中'),
-                _PlaceholderTab(message: '拜访记录功能开发中'),
-              ],
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Container(
-              padding: EdgeInsets.fromLTRB(12, 10, 12, bottomInset > 0 ? 6 : 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border(top: BorderSide(color: Colors.grey.shade200)),
-              ),
-              child: Row(
-                children: [
-                  _HistoryAction(
-                    onTap: () => _showComingSoon('历史记录'),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _VipActionButton(
-                      label: '分享到微信',
-                      icon: Icons.wechat,
-                      color: _wechatGreen,
-                      onTap: () => _showComingSoon('分享到微信'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _VipActionButton(
-                      label: '保存Excel',
-                      icon: Icons.download_outlined,
-                      color: _primaryBlue,
-                      onTap: () => _showComingSoon('保存Excel'),
-                    ),
-                  ),
-                ],
-              ),
+            child: _PhotoDetailTab(
+              photosBuilder: _filteredPhotos,
+              memberForPhoto: _memberForPhoto,
+              formatDateTime: _formatDateTime,
             ),
           ),
         ],
@@ -537,102 +447,6 @@ class _PhotoThumb extends StatelessWidget {
           proofMark: proofMark,
         ),
       ),
-    );
-  }
-}
-
-class _PlaceholderTab extends StatelessWidget {
-  const _PlaceholderTab({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        message,
-        style: TextStyle(color: Colors.grey.shade500),
-      ),
-    );
-  }
-}
-
-class _HistoryAction extends StatelessWidget {
-  const _HistoryAction({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.history, size: 22, color: Colors.grey.shade700),
-            const SizedBox(height: 2),
-            Text(
-              '历史记录',
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _VipActionButton extends StatelessWidget {
-  const _VipActionButton({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        SizedBox(
-          width: double.infinity,
-          height: 44,
-          child: FilledButton.icon(
-            onPressed: onTap,
-            style: FilledButton.styleFrom(
-              backgroundColor: color,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            icon: Icon(icon, size: 18),
-            label: Text(
-              label,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ),
-        const Positioned(
-          right: -2,
-          top: -6,
-          child: Icon(
-            Icons.workspace_premium,
-            size: 18,
-            color: Color(0xFFFFB020),
-          ),
-        ),
-      ],
     );
   }
 }

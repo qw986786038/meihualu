@@ -56,12 +56,6 @@ class _TeamMemberProfilePageState extends State<TeamMemberProfilePage>
     super.dispose();
   }
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature功能开发中，敬请期待')),
-    );
-  }
-
   List<_MemberPhotoDateGroup> _photoGroups() {
     final photos = _workspace
         .photosForTeam(_team.id)
@@ -111,7 +105,7 @@ class _TeamMemberProfilePageState extends State<TeamMemberProfilePage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _ProfileTopBar(onShareTap: () => _showComingSoon('分享到微信')),
+            _ProfileTopBar(),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Row(
@@ -124,38 +118,6 @@ class _TeamMemberProfilePageState extends State<TeamMemberProfilePage>
                       fontSize: 22,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF111111),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _ProfileActionButton(
-                      label: '查看考勤',
-                      onTap: () => _showComingSoon('查看考勤'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _ProfileActionButton(
-                      label: '拍照路线',
-                      onTap: () => _showComingSoon('拍照路线'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _ProfileActionButton(
-                      label: '通话',
-                      icon: const Icon(
-                        Icons.phone_in_talk,
-                        size: 16,
-                        color: Color(0xFF07C160),
-                      ),
-                      onTap: () => _showComingSoon('通话'),
                     ),
                   ),
                 ],
@@ -205,7 +167,6 @@ class _TeamMemberProfilePageState extends State<TeamMemberProfilePage>
                           countLabel: '${group.photos.length}张',
                           photos: group.photos,
                           formatTime: _formatPhotoTime,
-                          onDetailTap: () => _showComingSoon('动态详情'),
                         );
                       },
                     );
@@ -234,9 +195,7 @@ class _MemberPhotoDateGroup {
 }
 
 class _ProfileTopBar extends StatelessWidget {
-  const _ProfileTopBar({required this.onShareTap});
-
-  final VoidCallback onShareTap;
+  const _ProfileTopBar();
 
   @override
   Widget build(BuildContext context) {
@@ -270,57 +229,8 @@ class _ProfileTopBar extends StatelessWidget {
               ],
             ),
           ),
-          TextButton(
-            onPressed: onShareTap,
-            child: const Text(
-              '分享到微信',
-              style: TextStyle(fontSize: 14, color: Color(0xFF1677FF)),
-            ),
-          ),
+          const SizedBox(width: 48),
         ],
-      ),
-    );
-  }
-}
-
-class _ProfileActionButton extends StatelessWidget {
-  const _ProfileActionButton({
-    required this.label,
-    required this.onTap,
-    this.icon,
-  });
-
-  final String label;
-  final VoidCallback onTap;
-  final Widget? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xFFF5F6F8),
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: SizedBox(
-          height: 40,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (icon != null) ...[
-                icon!,
-                const SizedBox(width: 4),
-              ],
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF333333),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -332,14 +242,12 @@ class _MemberPhotoDateGroupTile extends StatelessWidget {
     required this.countLabel,
     required this.photos,
     required this.formatTime,
-    required this.onDetailTap,
   });
 
   final String dateLabel;
   final String countLabel;
   final List<TeamAlbumPhoto> photos;
   final String Function(DateTime) formatTime;
-  final VoidCallback onDetailTap;
 
   @override
   Widget build(BuildContext context) {
@@ -363,14 +271,6 @@ class _MemberPhotoDateGroupTile extends StatelessWidget {
               Text(
                 countLabel,
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 2),
-              GestureDetector(
-                onTap: onDetailTap,
-                child: const Text(
-                  '详情 >',
-                  style: TextStyle(fontSize: 13, color: Color(0xFF1677FF)),
-                ),
               ),
             ],
           ),

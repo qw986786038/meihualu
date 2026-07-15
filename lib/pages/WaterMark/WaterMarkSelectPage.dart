@@ -125,12 +125,6 @@ class _WaterMarkSelectPageState extends State<WaterMarkSelectPage> {
     Navigator.of(context).pop();
   }
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature功能开发中，敬请期待')),
-    );
-  }
-
   Future<void> _openSwitchTeam() async {
     await showWorkModeSwitchSheet(
       context,
@@ -143,7 +137,9 @@ class _WaterMarkSelectPageState extends State<WaterMarkSelectPage> {
   Future<void> _openAddTeamWatermark() async {
     final team = _auth.activeTeam.value;
     if (team == null) {
-      _showComingSoon('请先加入团队');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请先加入团队')),
+      );
       return;
     }
     Navigator.of(context).pop();
