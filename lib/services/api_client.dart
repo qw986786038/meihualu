@@ -266,6 +266,24 @@ class ApiClient extends GetxService {
     required Map<String, String> fields,
     String fieldName = 'file',
     T Function(Map<String, dynamic> json)? dataFromJson,
+  }) {
+    return uploadMultipart(
+      path: path,
+      filePath: filePath,
+      fields: fields,
+      fieldName: fieldName,
+      accessToken: accessToken,
+      dataFromJson: dataFromJson,
+    );
+  }
+
+  Future<ApiResponse<T>> uploadMultipart<T>({
+    required String path,
+    required String filePath,
+    required Map<String, String> fields,
+    String fieldName = 'file',
+    String? accessToken,
+    T Function(Map<String, dynamic> json)? dataFromJson,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}$path');
     final file = File(filePath);
@@ -280,7 +298,12 @@ class ApiClient extends GetxService {
 
     try {
       final request = http.MultipartRequest('POST', uri);
-      request.headers.addAll(authHeaders(accessToken));
+      final token = accessToken?.trim();
+      if (token != null && token.isNotEmpty) {
+        request.headers.addAll(authHeaders(token));
+      } else {
+        request.headers['clientid'] = ApiConfig.clientId;
+      }
       request.fields.addAll(fields);
       request.files.add(
         await http.MultipartFile.fromPath(fieldName, file.path),

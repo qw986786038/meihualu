@@ -15,8 +15,12 @@ import 'package:screenshot/screenshot.dart';
 import 'package:watermark_camera/pages/camera/WaterMarkController.dart';
 import 'package:watermark_camera/services/amap_location_service.dart';
 import 'package:watermark_camera/services/auth_service.dart';
+import 'package:watermark_camera/services/device_key_service.dart';
 import 'package:watermark_camera/services/photo_sync_service.dart';
+import 'package:watermark_camera/utils/anti_fake_code_generator.dart';
+import 'package:watermark_camera/utils/anti_fake_overlay.dart';
 import 'package:watermark_camera/utils/gallery_saver.dart';
+import 'package:watermark_camera/utils/space_upload_helper.dart';
 import 'package:watermark_camera/utils/watermark_metadata.dart';
 import 'package:watermark_camera/utils/watermark_original_store.dart';
 import 'package:watermark_camera/widgets/stack_board.dart';
@@ -138,12 +142,27 @@ class CameraController extends GetxController {
 
   Future<void> _handleCapture(XFile file, CameraxCaptureType type) async {
     XFile output = file;
+    AntiFakeProof? proof;
     if (type == CameraxCaptureType.photo) {
       final originalId = await WatermarkOriginalStore.saveFromPath(file.path);
       final merged = await _mergePhotoWithWatermark(file);
       output = merged ?? file;
+      if (Get.isRegistered<DeviceKeyService>()) {
+        final imageHash =
+            await SpaceUploadHelper.hashFileContent(output.path);
+        proof = await AntiFakeOverlay.applyToImagePath(
+          imagePath: output.path,
+          imageHash: imageHash,
+          deviceKeyService: Get.find<DeviceKeyService>(),
+          locationService: _locationService,
+        );
+      }
       await _writeLocationExif(output.path);
-      await _writeWatermarkMeta(output.path, originalId: originalId);
+      await _writeWatermarkMeta(
+        output.path,
+        originalId: originalId,
+        proof: proof,
+      );
     }
 
     PhotoSyncResult? syncResult;
@@ -266,8 +285,17 @@ class CameraController extends GetxController {
   Future<void> _writeWatermarkMeta(
     String imagePath, {
     String? originalId,
+    AntiFakeProof? proof,
   }) async {
-    if (!Get.isRegistered<WaterMarkController>()) return;
+    if (!Get.isRegistered<WaterMarkController>()) {
+      if (proof != null) {
+        await WatermarkMetadata.writeProofToImagePath(
+          imagePath,
+          proof: proof,
+        );
+      }
+      return;
+    }
     final wmController = Get.find<WaterMarkController>();
     StackBoardItem? item;
     for (final candidate in wmController.controller.items) {
@@ -276,10 +304,26 @@ class CameraController extends GetxController {
         break;
       }
     }
-    if (item == null) return;
+    if (item == null) {
+      if (proof != null) {
+        await WatermarkMetadata.writeProofToImagePath(
+          imagePath,
+          proof: proof,
+        );
+      }
+      return;
+    }
 
     final boardSize = wmController.controller.boardSize;
-    if (boardSize.width <= 0 || boardSize.height <= 0) return;
+    if (boardSize.width <= 0 || boardSize.height <= 0) {
+      if (proof != null) {
+        await WatermarkMetadata.writeProofToImagePath(
+          imagePath,
+          proof: proof,
+        );
+      }
+      return;
+    }
 
     await WatermarkMetadata.writeToImagePath(
       imagePath,
@@ -287,6 +331,7 @@ class CameraController extends GetxController {
       rect: item.rect,
       boardSize: boardSize,
       originalId: originalId,
+      proof: proof,
     );
   }
 

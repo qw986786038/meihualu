@@ -37,6 +37,7 @@ import 'package:watermark_camera/pages/gallery/batch_add_watermark_picker_page.d
 import 'package:watermark_camera/pages/gallery/batch_add_watermark_preview_page.dart';
 import 'package:watermark_camera/pages/gallery/batch_remove_watermark_picker_page.dart';
 import 'package:watermark_camera/pages/gallery/batch_remove_watermark_preview_page.dart';
+import 'package:watermark_camera/pages/gallery/media_verify_picker_page.dart';
 import 'package:watermark_camera/pages/camera/image_tagging_picker_page.dart';
 import 'package:watermark_camera/pages/camera/screen_text_ocr_picker_page.dart';
 import 'package:watermark_camera/pages/settings/sync_settings_page.dart';
@@ -328,6 +329,12 @@ final GoRouter appRouter = GoRouter(
           BatchRemoveWatermarkPreviewPage(
         assets: _readAssetExtra(state.extra),
       ),
+    ),
+    GoRoute(
+      path: AppPaths.mediaVerify,
+      name: 'mediaVerify',
+      builder: (BuildContext context, GoRouterState state) =>
+          const MediaVerifyPickerPage(),
     ),
   ],
 );

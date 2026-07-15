@@ -354,6 +354,31 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
               const SizedBox(height: 24),
             ],
           ),
+          Positioned(
+            top: MediaQuery.paddingOf(context).top + 10,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: TextButton(
+                onPressed: () => context.push(AppPaths.mediaVerify),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.black45,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                child: const Text(
+                  '照片验真',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ),
           if (_isTaggingRecognizing || _isScreenTextRecognizing)
             Container(
               color: Colors.black.withValues(alpha: 0.35),

@@ -1,6 +1,7 @@
 import 'package:getx_plus/getx_plus.dart';
 import 'package:watermark_camera/models/api/api_response.dart';
 import 'package:watermark_camera/models/api/media_by_sort_group.dart';
+import 'package:watermark_camera/models/api/media_verify_result.dart';
 import 'package:watermark_camera/models/api/paged_api_response.dart';
 import 'package:watermark_camera/models/api/space_batch_upload_data.dart';
 import 'package:watermark_camera/models/api/space_media_list_data.dart';
@@ -73,6 +74,36 @@ class SpaceApiService extends GetxService {
       latitude: latitude,
       longitude: longitude,
       dataFromJson: SpaceBatchUploadData.fromJson,
+    );
+  }
+
+  /// App 安装时注册设备 RSA 公钥（无需登录）。
+  Future<ApiResponse<void>> registerPublicKey({
+    required String deviceId,
+    required String publicKey,
+  }) {
+    return _client.post<void>(
+      'key/keyRegister',
+      body: {
+        'deviceId': deviceId,
+        'publicKey': publicKey,
+      },
+    );
+  }
+
+  /// 素材校验照片真实性。
+  Future<ApiResponse<MediaVerifyResult>> verifyMedia({
+    required String filePath,
+    required String proofJson,
+    String? accessToken,
+  }) {
+    return _client.uploadMultipart(
+      path: 'media/verify',
+      filePath: filePath,
+      fieldName: 'photo',
+      fields: {'proof': proofJson},
+      accessToken: accessToken,
+      dataFromJson: MediaVerifyResult.fromJson,
     );
   }
 

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:native_exif/native_exif.dart';
+import 'package:watermark_camera/utils/anti_fake_code_generator.dart';
 import 'package:watermark_camera/utils/watermark_original_store.dart';
 import 'package:watermark_camera/widgets/WaterMark/watermark_template_view.dart';
 
@@ -95,6 +96,7 @@ class WatermarkParsedMeta {
     required this.data,
     this.layout,
     this.originalId,
+    this.proof,
   });
 
   final Map<String, dynamic> data;
@@ -102,6 +104,9 @@ class WatermarkParsedMeta {
 
   /// 关联到 [WatermarkOriginalStore] 中保存的无水印原图。
   final String? originalId;
+
+  /// 防伪凭证（拍摄时生成）。
+  final AntiFakeProof? proof;
 }
 
 class WatermarkMetadata {
@@ -112,6 +117,7 @@ class WatermarkMetadata {
     required Rect rect,
     required Size boardSize,
     String? originalId,
+    AntiFakeProof? proof,
   }) {
     final layout = WatermarkLayoutNorm.fromRect(rect, boardSize);
     final payload = <String, dynamic>{
@@ -119,6 +125,7 @@ class WatermarkMetadata {
       'data': data,
       'layout': layout.toJson(),
       if (originalId != null && originalId.isNotEmpty) 'originalId': originalId,
+      if (proof != null) 'proof': proof.toJson(),
     };
     return '$kWatermarkMetaPrefix${jsonEncode(payload)}';
   }
@@ -140,10 +147,16 @@ class WatermarkMetadata {
             : null,
       );
       final originalId = decoded['originalId']?.toString();
+      final proof = decoded['proof'] is Map
+          ? AntiFakeProof.fromJson(
+              Map<String, dynamic>.from(decoded['proof'] as Map),
+            )
+          : null;
       return WatermarkParsedMeta(
         data: data,
         layout: layout,
         originalId: originalId,
+        proof: proof,
       );
     } catch (_) {
       return null;
@@ -175,6 +188,7 @@ class WatermarkMetadata {
     required Rect rect,
     required Size boardSize,
     String? originalId,
+    AntiFakeProof? proof,
   }) async {
     if (!(Platform.isAndroid || Platform.isIOS)) return;
     final lower = path.toLowerCase();
@@ -190,10 +204,48 @@ class WatermarkMetadata {
           rect: rect,
           boardSize: boardSize,
           originalId: originalId,
+          proof: proof,
         ),
       );
     } catch (_) {
       // 元数据写入失败不影响保存图片。
+    } finally {
+      await exif?.close();
+    }
+  }
+
+  /// 仅写入 / 覆盖防伪凭证（保留已有水印元数据）。
+  static Future<void> writeProofToImagePath(
+    String path, {
+    required AntiFakeProof proof,
+  }) async {
+    if (!(Platform.isAndroid || Platform.isIOS)) return;
+    final lower = path.toLowerCase();
+    if (!lower.endsWith('.jpg') && !lower.endsWith('.jpeg')) return;
+
+    Exif? exif;
+    try {
+      exif = await Exif.fromPath(path);
+      final existing = decodeUserComment(
+        await exif.getAttribute<String>('UserComment'),
+      );
+      final data = existing?.data ?? createDefaultWatermarkData();
+      final layout = existing?.layout ??
+          const WatermarkLayoutNorm(nx: 0.02, ny: 0.78, nw: 0.72, nh: 0.18);
+      final payload = <String, dynamic>{
+        'v': 1,
+        'data': data,
+        'layout': layout.toJson(),
+        if (existing?.originalId != null && existing!.originalId!.isNotEmpty)
+          'originalId': existing.originalId,
+        'proof': proof.toJson(),
+      };
+      await exif.writeAttribute(
+        'UserComment',
+        '$kWatermarkMetaPrefix${jsonEncode(payload)}',
+      );
+    } catch (_) {
+      // ignore
     } finally {
       await exif?.close();
     }

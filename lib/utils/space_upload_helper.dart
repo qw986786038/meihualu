@@ -31,6 +31,12 @@ class SpaceUploadPayload {
 }
 
 abstract final class SpaceUploadHelper {
+  /// 与上传接口一致的文件内容 SHA256（再与 spaceId 组合得到 sha256Hash）。
+  static Future<String> hashFileContent(String filePath) async {
+    final bytes = await File(filePath).readAsBytes();
+    return sha256.convert(bytes).toString();
+  }
+
   static String buildUploadSha256Hash({
     required String fileSha256Hash,
     required String spaceId,
@@ -58,7 +64,11 @@ abstract final class SpaceUploadHelper {
     DateTime? captureTime,
   }) async {
     final bytes = await File(filePath).readAsBytes();
-    final fileSha256Hash = sha256.convert(bytes).toString();
+    final proofImageHash = await _proofImageHash(filePath);
+    final fileSha256Hash =
+        (proofImageHash != null && proofImageHash.isNotEmpty)
+            ? proofImageHash
+            : sha256.convert(bytes).toString();
     final exifData = await _readExifJson(filePath);
     final templateId = watermarkString(
       watermarkData,
@@ -88,9 +98,12 @@ abstract final class SpaceUploadHelper {
     DateTime? captureTime,
   }) async {
     final bytes = await File(filePath).readAsBytes();
-    final fileSha256Hash = sha256.convert(bytes).toString();
-    final exifData = await _readExifJson(filePath);
     final parsed = await WatermarkMetadata.readFromImagePath(filePath);
+    final proofHash = parsed?.proof?.imageHash.trim();
+    final fileSha256Hash = (proofHash != null && proofHash.isNotEmpty)
+        ? proofHash
+        : sha256.convert(bytes).toString();
+    final exifData = await _readExifJson(filePath);
     final fallbackTime = captureTime ?? DateTime.now();
 
     if (parsed != null && _isAppCaptured(parsed)) {
@@ -119,6 +132,13 @@ abstract final class SpaceUploadHelper {
       watermarkId: watermarkBackendId(kDefaultWatermarkTemplateId),
       watermarkContent: '{}',
     );
+  }
+
+  static Future<String?> _proofImageHash(String filePath) async {
+    final parsed = await WatermarkMetadata.readFromImagePath(filePath);
+    final hash = parsed?.proof?.imageHash.trim();
+    if (hash == null || hash.isEmpty) return null;
+    return hash;
   }
 
   static bool _isAppCaptured(WatermarkParsedMeta parsed) {

@@ -55,6 +55,7 @@ dependencies:
   qr_flutter: ^4.1.0
   shared_preferences: ^2.5.3
   fluwx: ^6.0.0
+  pointycastle: ^4.0.0
 
 fluwx:
   app_id: wxb6ff0bb17edccf78
