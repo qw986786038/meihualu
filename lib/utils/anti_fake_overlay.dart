@@ -16,6 +16,36 @@ abstract final class AntiFakeOverlay {
     required AMapLocationService locationService,
     String? extraEntropy,
   }) async {
+    final file = File(imagePath);
+    if (!await file.exists()) return null;
+    final bytes = await file.readAsBytes();
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) return null;
+
+    final proof = await buildProof(
+      imageHash: imageHash,
+      claimedWidth: decoded.width,
+      claimedHeight: decoded.height,
+      deviceKeyService: deviceKeyService,
+      locationService: locationService,
+      extraEntropy: extraEntropy,
+    );
+    if (proof == null) return null;
+
+    _drawAntiFakeCode(decoded, proof.antiFakeCode);
+    await file.writeAsBytes(img.encodeJpg(decoded, quality: 95), flush: true);
+    return proof;
+  }
+
+  /// 按拍照规则生成验真凭证（不改写图片像素）。
+  static Future<AntiFakeProof?> buildProof({
+    required String imageHash,
+    required int claimedWidth,
+    required int claimedHeight,
+    required DeviceKeyService deviceKeyService,
+    required AMapLocationService locationService,
+    String? extraEntropy,
+  }) async {
     final ready = await deviceKeyService.ensureKeysReady();
     if (!ready) return null;
 
@@ -31,12 +61,6 @@ abstract final class AntiFakeOverlay {
     final hash = imageHash.trim();
     if (hash.isEmpty) return null;
 
-    final file = File(imagePath);
-    if (!await file.exists()) return null;
-    final bytes = await file.readAsBytes();
-    final decoded = img.decodeImage(bytes);
-    if (decoded == null) return null;
-
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final location = locationService.latestLocation.value;
     final latitude = location?.latitude;
@@ -46,23 +70,12 @@ abstract final class AntiFakeOverlay {
     final lat = hasGps ? latitude : 0.0;
     final lng = hasGps ? longitude : 0.0;
 
-    final antiFakeCode = AntiFakeCodeGenerator.generate(
-      deviceId: deviceId,
-      timestamp: timestamp,
-      locationSource: locationSource,
-      latitude: lat,
-      longitude: lng,
-      imageHash: hash,
-      extraEntropy: extraEntropy,
-    );
-
+    // 与上传/验真一致：antiFakeCode = AntiFakeCodeGenerator.generate(imageHash)
+    final antiFakeCode = AntiFakeCodeGenerator.generate(hash);
     final signature = RsaKeyPairHelper.signSha256Base64(
       privateKeyBase64: privateKey,
       message: antiFakeCode,
     );
-
-    _drawAntiFakeCode(decoded, antiFakeCode);
-    await file.writeAsBytes(img.encodeJpg(decoded, quality: 95), flush: true);
 
     return AntiFakeProof(
       imageHash: hash,
@@ -73,8 +86,8 @@ abstract final class AntiFakeOverlay {
       longitude: lng,
       locationSource: locationSource,
       deviceId: deviceId,
-      claimedWidth: decoded.width,
-      claimedHeight: decoded.height,
+      claimedWidth: claimedWidth,
+      claimedHeight: claimedHeight,
       extraEntropy: extraEntropy,
     );
   }

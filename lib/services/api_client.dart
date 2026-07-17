@@ -415,6 +415,7 @@ class ApiClient extends GetxService {
       'watermarkId': <int>[],
       'exifData': <String>[],
       'sha256Hash': <String>[],
+      'antiFakeCode': <String>[],
     };
 
     try {
@@ -451,6 +452,9 @@ class ApiClient extends GetxService {
         request.files.add(
           http.MultipartFile.fromString('sha256Hash', item.sha256Hash),
         );
+        request.files.add(
+          http.MultipartFile.fromString('antiFakeCode', item.antiFakeCode),
+        );
 
         (requestBody['files'] as List<String>).add(item.filePath);
         (requestBody['watermarkContent'] as List<String>)
@@ -458,6 +462,7 @@ class ApiClient extends GetxService {
         (requestBody['watermarkId'] as List<int>).add(item.watermarkId);
         (requestBody['exifData'] as List<String>).add(item.exifData);
         (requestBody['sha256Hash'] as List<String>).add(item.sha256Hash);
+        (requestBody['antiFakeCode'] as List<String>).add(item.antiFakeCode);
       }
 
       final streamed = await request.send();

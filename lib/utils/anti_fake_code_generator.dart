@@ -3,29 +3,20 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 /// 与后端 Java [AntiFakeCodeGenerator] 对齐的防伪码生成。
+///
+/// ```java
+/// public static String generate(String imageHash) {
+///   String hash = sha256(imageHash);
+///   BigInteger bigInt = new BigInteger(hash, 16);
+///   String base36 = bigInt.toString(36).toUpperCase();
+///   return base36.length() >= 14 ? base36.substring(0, 14)
+///       : String.format("%14s", base36).replace(' ', '0');
+/// }
+/// ```
 abstract final class AntiFakeCodeGenerator {
-  static String generate({
-    required String deviceId,
-    required int timestamp,
-    required String locationSource,
-    required double latitude,
-    required double longitude,
-    required String imageHash,
-    String? extraEntropy,
-  }) {
-    final raw = StringBuffer()
-      ..write(deviceId)
-      ..write(timestamp)
-      ..write(locationSource)
-      ..write(latitude)
-      ..write(longitude)
-      ..write(imageHash);
-    final entropy = extraEntropy?.trim();
-    if (entropy != null && entropy.isNotEmpty) {
-      raw.write(entropy);
-    }
-
-    final hash = sha256.convert(utf8.encode(raw.toString())).toString();
+  /// [imageHash] 为文件内容的 SHA256 十六进制字符串。
+  static String generate(String imageHash) {
+    final hash = sha256.convert(utf8.encode(imageHash)).toString();
     final bigInt = BigInt.parse(hash, radix: 16);
     var base36 = bigInt.toRadixString(36).toUpperCase();
     if (base36.length >= 14) {

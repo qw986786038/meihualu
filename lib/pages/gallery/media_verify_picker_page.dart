@@ -19,6 +19,7 @@ class MediaVerifyPickerPage extends StatefulWidget {
 class _MediaVerifyPickerPageState extends State<MediaVerifyPickerPage> {
   final MediaVerifyPickerController controller =
       Get.put(MediaVerifyPickerController());
+  bool _preparing = false;
 
   @override
   void dispose() {
@@ -36,16 +37,35 @@ class _MediaVerifyPickerPageState extends State<MediaVerifyPickerPage> {
   }
 
   Future<void> _onAssetTap(AssetEntity asset) async {
+    if (_preparing) return;
     if (asset.type == AssetType.video) {
       _showSnack('暂仅支持校验照片');
       return;
     }
-    if (!mounted) return;
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => MediaVerifyResultPage(asset: asset),
-      ),
-    );
+
+    _preparing = true;
+    try {
+      // TODO: 恢复选择时水印/防伪凭证校验
+      // final file = await asset.file;
+      // if (file == null || !await file.exists()) {
+      //   _showSnack('无法读取所选文件');
+      //   return;
+      // }
+      // final supported = await MediaVerifyPrepare.isSupported(file.path);
+      // if (!supported) {
+      //   _showSnack(MediaVerifyPrepare.unsupportedMessage);
+      //   return;
+      // }
+
+      if (!mounted) return;
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => MediaVerifyResultPage(asset: asset),
+        ),
+      );
+    } finally {
+      _preparing = false;
+    }
   }
 
   @override
@@ -70,11 +90,12 @@ class _MediaVerifyPickerPageState extends State<MediaVerifyPickerPage> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    '请选择本应用拍摄并带有防伪码的照片',
-                    style: TextStyle(color: Color(0xFF999999), fontSize: 13),
-                  ),
+                  // TODO: 恢复提示「仅支持验证带水印和防伪码的照片」
+                  // SizedBox(height: 4),
+                  // Text(
+                  //   '仅支持验证带水印和防伪码的照片',
+                  //   style: TextStyle(color: Color(0xFF999999), fontSize: 13),
+                  // ),
                 ],
               ),
             ),

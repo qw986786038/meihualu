@@ -108,7 +108,7 @@ class _TeamInviteMembersPageState extends State<TeamInviteMembersPage> {
             child: Column(
               children: [
                 Text(
-                  '也可以让成员下载今日水印相机APP',
+                  '也可以让成员下载今日梅花鹿APP',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13,

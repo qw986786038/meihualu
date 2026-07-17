@@ -177,11 +177,12 @@ class PhotoSyncService extends GetxService {
         filePath: filePath,
         spaceId: spaceId,
         exifData: payload.exifData,
-        sha256Hash: payload.sha256HashForSpace(spaceId),
+        sha256Hash: payload.fileSha256Hash,
         watermarkId: payload.watermarkId,
         watermarkContent: payload.watermarkContent,
         latitude: latitude,
         longitude: longitude,
+        antiFakeCode: payload.antiFakeCode,
         proofMark: proofMark,
       );
       if (!response.isSuccess || response.data == null) return false;

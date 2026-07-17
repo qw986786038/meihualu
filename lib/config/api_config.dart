@@ -1,6 +1,6 @@
 /// 后端 API 公共配置。
 abstract final class ApiConfig {
-  static const String baseUrl = 'http://192.168.5.25:8089/watermark-camera/';
+  static const String baseUrl = 'http://192.168.5.45:8089/watermark-camera/';
 
   /// 客户端 ID，登录等接口共用。
   static const String clientId = '907e91bbea3b58d25eb99fe9a406b2e0';

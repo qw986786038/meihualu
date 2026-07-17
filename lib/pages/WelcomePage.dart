@@ -38,7 +38,7 @@ class _WelcomePageState extends State<WelcomePage> {
           children: [
             Icon(Icons.camera_alt, size: 64, color: Colors.teal),
             SizedBox(height: 16),
-            Text('欢迎使用水印相机', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+            Text('欢迎使用梅花鹿', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
           ],
         ),
       ),

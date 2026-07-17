@@ -31,10 +31,11 @@ class SpaceMediaService extends GetxService {
         items.add(
           SpaceBatchUploadItem(
             filePath: filePaths[i],
-            sha256Hash: payload.sha256HashForSpace(spaceId),
+            sha256Hash: payload.fileSha256Hash,
             exifData: payload.exifData,
             watermarkId: payload.watermarkId,
             watermarkContent: payload.watermarkContent,
+            antiFakeCode: payload.antiFakeCode,
           ),
         );
       }

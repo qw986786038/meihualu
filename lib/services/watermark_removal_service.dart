@@ -10,11 +10,11 @@ import 'package:watermark_camera/utils/watermark_eligibility.dart';
 import 'package:watermark_camera/utils/watermark_metadata.dart';
 import 'package:watermark_camera/utils/watermark_original_store.dart';
 
-/// 本应用水印去除服务（仅处理「水印相机」相册中的媒体）。
+/// 本应用水印去除服务（仅处理「梅花鹿」相册中的媒体）。
 class WatermarkRemovalService {
   const WatermarkRemovalService._();
 
-  static const String _albumName = '水印相机';
+  static const String _albumName = '梅花鹿';
   static const MethodChannel _cameraxChannel = MethodChannel('camerax');
 
   /// 是否为本应用可去水印的媒体。

@@ -39,7 +39,7 @@ class _AiRemoveWatermarkPickerPageState
 
   Future<void> _onAssetTap(AssetEntity asset) async {
     if (!controller.isRemovable(asset)) {
-      _showSnack('仅支持去除本应用「水印相机」相册中的水印');
+      _showSnack('仅支持去除本应用「梅花鹿」相册中的水印');
       return;
     }
 
@@ -144,7 +144,7 @@ class _AiRemoveWatermarkPickerPageState
           ),
           SizedBox(height: 4),
           Text(
-            '仅显示「水印相机」相册中的内容，其他应用水印无法去除',
+            '仅显示「梅花鹿」相册中的内容，其他应用水印无法去除',
             style: TextStyle(
               color: Color(0xFF999999),
               fontSize: 13,

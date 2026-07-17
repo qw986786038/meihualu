@@ -6,7 +6,7 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:watermark_camera/models/api/media_verify_result.dart';
 import 'package:watermark_camera/services/auth_service.dart';
 import 'package:watermark_camera/services/space_api_service.dart';
-import 'package:watermark_camera/utils/watermark_metadata.dart';
+import 'package:watermark_camera/utils/media_verify_prepare.dart';
 
 const Color _kPrimaryBlue = Color(0xFF2F7CF6);
 
@@ -49,12 +49,22 @@ class _MediaVerifyResultPageState extends State<MediaVerifyResultPage> {
       }
       _previewFile = file;
 
-      final meta = await WatermarkMetadata.readFromImagePath(file.path);
-      final proof = meta?.proof;
-      if (proof == null) {
+      // TODO: 恢复「仅支持验证带水印和防伪码的照片」本地鉴别
+      // final supported = await MediaVerifyPrepare.isSupported(file.path);
+      // if (!supported) {
+      //   setState(() {
+      //     _loading = false;
+      //     _error = MediaVerifyPrepare.unsupportedMessage;
+      //   });
+      //   return;
+      // }
+
+      // 始终按拍照规则重新生成 proof，再调用后台验真接口。
+      final proof = await MediaVerifyPrepare.rebuildProof(file.path);
+      if (!MediaVerifyPrepare.hasValidProof(proof)) {
         setState(() {
           _loading = false;
-          _error = '未找到防伪凭证，请选择本应用拍摄的照片';
+          _error = '无法生成验真凭证，请稍后重试';
         });
         return;
       }
@@ -67,7 +77,7 @@ class _MediaVerifyResultPageState extends State<MediaVerifyResultPage> {
 
       final response = await Get.find<SpaceApiService>().verifyMedia(
         filePath: file.path,
-        proofJson: proof.toJsonString(),
+        proofJson: proof!.toJsonString(),
         accessToken: accessToken,
       );
 

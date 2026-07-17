@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:native_exif/native_exif.dart';
 import 'package:watermark_camera/services/amap_location_service.dart';
+import 'package:watermark_camera/utils/anti_fake_code_generator.dart';
 import 'package:watermark_camera/utils/watermark_metadata.dart';
 import 'package:watermark_camera/widgets/WaterMark/watermark_template_view.dart';
 
@@ -13,36 +14,24 @@ class SpaceUploadPayload {
     required this.exifData,
     required this.watermarkId,
     required this.watermarkContent,
+    this.antiFakeCode = '',
   });
 
-  /// 文件内容的 SHA256。
+  /// 文件内容的 SHA256（上传接口直接使用，不再拼接 spaceId）。
   final String fileSha256Hash;
   final String exifData;
   final int watermarkId;
   final String watermarkContent;
 
-  /// 上传接口使用的 SHA256：对「文件 hash + spaceId」再次哈希。
-  String sha256HashForSpace(String spaceId) {
-    return SpaceUploadHelper.buildUploadSha256Hash(
-      fileSha256Hash: fileSha256Hash,
-      spaceId: spaceId,
-    );
-  }
+  /// 防伪码。
+  final String antiFakeCode;
 }
 
 abstract final class SpaceUploadHelper {
-  /// 与上传接口一致的文件内容 SHA256（再与 spaceId 组合得到 sha256Hash）。
+  /// 文件内容 SHA256，直接作为上传接口的 sha256Hash。
   static Future<String> hashFileContent(String filePath) async {
     final bytes = await File(filePath).readAsBytes();
     return sha256.convert(bytes).toString();
-  }
-
-  static String buildUploadSha256Hash({
-    required String fileSha256Hash,
-    required String spaceId,
-  }) {
-    final combined = '$fileSha256Hash$spaceId';
-    return sha256.convert(utf8.encode(combined)).toString();
   }
 
   static const _exifKeys = [
@@ -64,11 +53,7 @@ abstract final class SpaceUploadHelper {
     DateTime? captureTime,
   }) async {
     final bytes = await File(filePath).readAsBytes();
-    final proofImageHash = await _proofImageHash(filePath);
-    final fileSha256Hash =
-        (proofImageHash != null && proofImageHash.isNotEmpty)
-            ? proofImageHash
-            : sha256.convert(bytes).toString();
+    final fileSha256Hash = sha256.convert(bytes).toString();
     final exifData = await _readExifJson(filePath);
     final templateId = watermarkString(
       watermarkData,
@@ -89,6 +74,7 @@ abstract final class SpaceUploadHelper {
       exifData: exifData,
       watermarkId: watermarkId,
       watermarkContent: watermarkContent,
+      antiFakeCode: AntiFakeCodeGenerator.generate(fileSha256Hash),
     );
   }
 
@@ -98,13 +84,11 @@ abstract final class SpaceUploadHelper {
     DateTime? captureTime,
   }) async {
     final bytes = await File(filePath).readAsBytes();
+    final fileSha256Hash = sha256.convert(bytes).toString();
     final parsed = await WatermarkMetadata.readFromImagePath(filePath);
-    final proofHash = parsed?.proof?.imageHash.trim();
-    final fileSha256Hash = (proofHash != null && proofHash.isNotEmpty)
-        ? proofHash
-        : sha256.convert(bytes).toString();
     final exifData = await _readExifJson(filePath);
     final fallbackTime = captureTime ?? DateTime.now();
+    final antiFakeCode = AntiFakeCodeGenerator.generate(fileSha256Hash);
 
     if (parsed != null && _isAppCaptured(parsed)) {
       final templateId = watermarkString(
@@ -123,6 +107,7 @@ abstract final class SpaceUploadHelper {
             fallbackTime: fallbackTime,
           ),
         ),
+        antiFakeCode: antiFakeCode,
       );
     }
 
@@ -131,14 +116,8 @@ abstract final class SpaceUploadHelper {
       exifData: exifData,
       watermarkId: watermarkBackendId(kDefaultWatermarkTemplateId),
       watermarkContent: '{}',
+      antiFakeCode: antiFakeCode,
     );
-  }
-
-  static Future<String?> _proofImageHash(String filePath) async {
-    final parsed = await WatermarkMetadata.readFromImagePath(filePath);
-    final hash = parsed?.proof?.imageHash.trim();
-    if (hash == null || hash.isEmpty) return null;
-    return hash;
   }
 
   static bool _isAppCaptured(WatermarkParsedMeta parsed) {

@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:go_router/go_router.dart';
+import 'package:watermark_camera/models/api/space_media_list_data.dart';
 import 'package:watermark_camera/models/team.dart';
 import 'package:watermark_camera/models/team_album_photo.dart';
 import 'package:watermark_camera/models/team_member.dart';
 import 'package:watermark_camera/models/space_media_viewer_item.dart';
-import 'package:watermark_camera/services/team_workspace_service.dart';
+import 'package:watermark_camera/services/auth_service.dart';
+import 'package:watermark_camera/services/space_api_service.dart';
 import 'package:watermark_camera/utils/space_media_image.dart';
 import 'package:watermark_camera/utils/space_media_viewer.dart';
 
@@ -32,13 +34,11 @@ class TeamMemberProfilePage extends StatefulWidget {
   State<TeamMemberProfilePage> createState() => _TeamMemberProfilePageState();
 }
 
-class _TeamMemberProfilePageState extends State<TeamMemberProfilePage>
-    with SingleTickerProviderStateMixin {
+class _TeamMemberProfilePageState extends State<TeamMemberProfilePage> {
   static const _primaryBlue = Color(0xFF1677FF);
 
-  late final TabController _tabController;
-
-  TeamWorkspaceService get _workspace => Get.find<TeamWorkspaceService>();
+  bool _isLoading = true;
+  List<_MemberPhotoDateGroup> _groups = const [];
 
   Team get _team => widget.team;
 
@@ -47,42 +47,90 @@ class _TeamMemberProfilePageState extends State<TeamMemberProfilePage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _loadMemberPhotos();
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  List<_MemberPhotoDateGroup> _photoGroups() {
-    final photos = _workspace
-        .photosForTeam(_team.id)
-        .where((photo) => photo.memberId == _member.id)
-        .toList()
-      ..sort((a, b) => b.capturedAt.compareTo(a.capturedAt));
-
-    final map = <String, List<TeamAlbumPhoto>>{};
-    for (final photo in photos) {
-      final key = _dateKey(photo.capturedAt);
-      map.putIfAbsent(key, () => []).add(photo);
+  Future<void> _loadMemberPhotos() async {
+    final token = Get.find<AuthService>().accessToken.value.trim();
+    if (token.isEmpty || _team.id.isEmpty) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
     }
 
-    return map.entries.map((entry) {
-      final parts = entry.key.split('-');
-      final date = DateTime(
-        int.parse(parts[0]),
-        int.parse(parts[1]),
-        int.parse(parts[2]),
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await Get.find<SpaceApiService>().searchMediaList(
+        accessToken: token,
+        spaceId: _team.id,
+        shootUserId: _member.id,
+        pageNum: 1,
+        pageSize: 100,
       );
-      return _MemberPhotoDateGroup(date: date, photos: entry.value);
-    }).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+
+      if (!mounted) return;
+
+      if (!response.isSuccess || response.data == null) {
+        setState(() {
+          _groups = const [];
+          _isLoading = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _groups = _groupsFromMediaList(response.data!);
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _groups = const [];
+        _isLoading = false;
+      });
+    }
   }
 
-  String _dateKey(DateTime date) =>
-      '${date.year}-${date.month}-${date.day}';
+  List<_MemberPhotoDateGroup> _groupsFromMediaList(SpaceMediaListData data) {
+    final groups = <_MemberPhotoDateGroup>[];
+    for (final group in data.groups) {
+      final photos = group.files
+          .where((file) => file.id.isNotEmpty)
+          .map((file) => file.toTeamAlbumPhoto(_team.id))
+          .toList();
+      if (photos.isEmpty) continue;
+
+      final date = _parseGroupDate(group.date) ??
+          DateTime(
+            photos.first.capturedAt.year,
+            photos.first.capturedAt.month,
+            photos.first.capturedAt.day,
+          );
+      photos.sort((a, b) => b.capturedAt.compareTo(a.capturedAt));
+      groups.add(_MemberPhotoDateGroup(date: date, photos: photos));
+    }
+    groups.sort((a, b) => b.date.compareTo(a.date));
+    return groups;
+  }
+
+  DateTime? _parseGroupDate(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return null;
+    final parsed = DateTime.tryParse(trimmed);
+    if (parsed != null) {
+      return DateTime(parsed.year, parsed.month, parsed.day);
+    }
+    final parts = trimmed.split(RegExp(r'[-/]'));
+    if (parts.length >= 3) {
+      final year = int.tryParse(parts[0]);
+      final month = int.tryParse(parts[1]);
+      final day = int.tryParse(parts[2]);
+      if (year != null && month != null && day != null) {
+        return DateTime(year, month, day);
+      }
+    }
+    return null;
+  }
 
   String _formatGroupDate(DateTime date) {
     final month = date.month.toString().padLeft(2, '0');
@@ -105,9 +153,9 @@ class _TeamMemberProfilePageState extends State<TeamMemberProfilePage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _ProfileTopBar(),
+            const _ProfileTopBar(),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               child: Row(
                 children: [
                   _MemberAvatar(text: _member.avatarText, size: 56),
@@ -123,62 +171,65 @@ class _TeamMemberProfilePageState extends State<TeamMemberProfilePage>
                 ],
               ),
             ),
-            TabBar(
-              controller: _tabController,
-              labelColor: _primaryBlue,
-              unselectedLabelColor: Colors.grey.shade600,
-              indicatorColor: _primaryBlue,
-              indicatorSize: TabBarIndicatorSize.label,
-              labelStyle: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
+            Container(
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade200),
+                ),
               ),
-              unselectedLabelStyle: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w400,
+              child: const IntrinsicWidth(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        '全部动态',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: _primaryBlue,
+                        ),
+                      ),
+                    ),
+                    ColoredBox(
+                      color: _primaryBlue,
+                      child: SizedBox(height: 2),
+                    ),
+                  ],
+                ),
               ),
-              tabs: const [
-                Tab(text: '全部动态'),
-                Tab(text: '拼图汇报'),
-              ],
             ),
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  Obx(() {
-                    final groups = _photoGroups();
-                    if (groups.isEmpty) {
-                      return Center(
-                        child: Text(
-                          '暂无动态',
-                          style: TextStyle(color: Colors.grey.shade500),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _groups.isEmpty
+                      ? Center(
+                          child: Text(
+                            '暂无照片记录',
+                            style: TextStyle(color: Colors.grey.shade500),
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _loadMemberPhotos,
+                          child: ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                            itemCount: _groups.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 20),
+                            itemBuilder: (context, index) {
+                              final group = _groups[index];
+                              return _MemberPhotoDateGroupTile(
+                                dateLabel: _formatGroupDate(group.date),
+                                countLabel: '${group.photos.length}张',
+                                photos: group.photos,
+                                formatTime: _formatPhotoTime,
+                              );
+                            },
+                          ),
                         ),
-                      );
-                    }
-                    return ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                      itemCount: groups.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 20),
-                      itemBuilder: (context, index) {
-                        final group = groups[index];
-                        return _MemberPhotoDateGroupTile(
-                          dateLabel: _formatGroupDate(group.date),
-                          countLabel: '${group.photos.length}张',
-                          photos: group.photos,
-                          formatTime: _formatPhotoTime,
-                        );
-                      },
-                    );
-                  }),
-                  Center(
-                    child: Text(
-                      '暂无拼图汇报',
-                      style: TextStyle(color: Colors.grey.shade500),
-                    ),
-                  ),
-                ],
-              ),
             ),
           ],
         ),
@@ -220,7 +271,11 @@ class _ProfileTopBar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 4),
-                Icon(Icons.verified_user_outlined, size: 16, color: Colors.grey.shade500),
+                Icon(
+                  Icons.verified_user_outlined,
+                  size: 16,
+                  color: Colors.grey.shade500,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   '工作信用 暂无',

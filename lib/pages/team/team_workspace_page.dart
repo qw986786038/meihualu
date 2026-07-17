@@ -9,6 +9,7 @@ import 'package:watermark_camera/models/team_album_photo.dart';
 import 'package:watermark_camera/models/team_member.dart';
 import 'package:watermark_camera/models/space_media_viewer_item.dart';
 import 'package:watermark_camera/pages/team/team_member_profile_page.dart';
+import 'package:watermark_camera/pages/team/team_membership_page.dart';
 import 'package:watermark_camera/router/app_paths.dart';
 import 'package:watermark_camera/services/auth_service.dart';
 import 'package:watermark_camera/services/amap_location_service.dart';
@@ -848,7 +849,7 @@ class _TeamFeedList extends StatelessWidget {
               memberItems.first,
               (previous, item) => previous.mergedWith(item),
             );
-            return _FeedItemCard(feedItem: merged);
+            return _FeedItemCard(team: team, feedItem: merged);
           },
         );
       }
@@ -858,7 +859,7 @@ class _TeamFeedList extends StatelessWidget {
         itemCount: items.length,
         itemBuilder: (context, index) {
           final item = items[index];
-          return _FeedItemCard(feedItem: item);
+          return _FeedItemCard(team: team, feedItem: item);
         },
       );
     });
@@ -967,8 +968,9 @@ class _WorkCircleEmptyState extends StatelessWidget {
 }
 
 class _FeedItemCard extends StatelessWidget {
-  const _FeedItemCard({required this.feedItem});
+  const _FeedItemCard({required this.team, required this.feedItem});
 
+  final Team team;
   final TeamPhotoFeedItem feedItem;
 
   String _formatTime(DateTime time) {
@@ -990,6 +992,13 @@ class _FeedItemCard extends StatelessWidget {
     return MediaCaptureSummary.buildLastCaptureLine(
       lastCaptureTime: feedItem.lastCaptureTime,
       distanceMeters: distance,
+    );
+  }
+
+  Future<void> _openMemberProfile(BuildContext context) async {
+    await context.push(
+      AppPaths.teamMemberProfile,
+      extra: TeamMemberProfileArgs(team: team, member: feedItem.member),
     );
   }
 
@@ -1015,20 +1024,24 @@ class _FeedItemCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              _MemberAvatar(text: member.avatarText),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  member.name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+          GestureDetector(
+            onTap: () => _openMemberProfile(context),
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              children: [
+                _MemberAvatar(text: member.avatarText),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    member.name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           _PhotoGrid(photos: photos),
@@ -1859,6 +1872,27 @@ class _TeamManageTabState extends State<_TeamManageTab> {
     );
   }
 
+  Future<void> _openTeamMembership() async {
+    final auth = Get.find<AuthService>();
+    final workspace = Get.find<TeamWorkspaceService>();
+    await workspace.fetchTeamMembers(teamId: _team.id, auth: auth);
+    if (!mounted) return;
+
+    final self = workspace.selfMemberForTeam(_team.id, auth);
+    final isAdmin = self?.role == TeamMemberRole.owner;
+    if (!isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('仅管理员可开通团队VIP')),
+      );
+      return;
+    }
+
+    context.push(
+      AppPaths.teamMembership,
+      extra: TeamMembershipArgs(team: _team),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
@@ -1874,6 +1908,11 @@ class _TeamManageTabState extends State<_TeamManageTab> {
           const SizedBox(height: 12),
           _ManageSettingsCard(
             items: [
+              _ManageSettingItem(
+                title: '团队会员',
+                subtitle: '开通团队VIP解锁更多权益',
+                onTap: _openTeamMembership,
+              ),
               _ManageSettingItem(
                 title: '团队水印',
                 subtitle: '一人设置 团队共用',

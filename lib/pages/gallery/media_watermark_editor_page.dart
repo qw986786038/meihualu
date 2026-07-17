@@ -146,7 +146,7 @@ class _MediaWatermarkEditorPageState extends State<MediaWatermarkEditorPage> {
       case '去水印':
       case '智能去水印':
         if (!controller.canRemoveWatermark) {
-          _showSnack('仅支持去除本应用「水印相机」相册中的水印');
+          _showSnack('仅支持去除本应用「梅花鹿」相册中的水印');
           return;
         }
         final removed = await controller.removeBakedWatermark();

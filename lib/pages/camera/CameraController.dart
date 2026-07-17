@@ -31,7 +31,7 @@ class CameraController extends GetxController {
   final screenshotController = ScreenshotController();
   final Rxn<ImageProvider> latestPhotoPreviewImage = Rxn<ImageProvider>();
   final AMapLocationService _locationService = Get.find<AMapLocationService>();
-  static const _albumName = '水印相机';
+  static const _albumName = '梅花鹿';
   Timer? _videoWatermarkTimer;
 
   Future<AssetEntity?> getLatestPhoto() async {

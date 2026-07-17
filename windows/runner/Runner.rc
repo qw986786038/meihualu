@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "cn.hwato" "\0"
-            VALUE "FileDescription", "watermark_camera" "\0"
+            VALUE "FileDescription", "梅花鹿" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "watermark_camera" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 cn.hwato. All rights reserved." "\0"
             VALUE "OriginalFilename", "watermark_camera.exe" "\0"
-            VALUE "ProductName", "watermark_camera" "\0"
+            VALUE "ProductName", "梅花鹿" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:watermark_camera/router/app_router.dart';
+import 'package:watermark_camera/services/alipay_service.dart';
 import 'package:watermark_camera/services/aliyun_image_tagging_service.dart';
 import 'package:watermark_camera/services/aliyun_ocr_service.dart';
 import 'package:watermark_camera/services/amap_location_service.dart';
@@ -7,6 +8,7 @@ import 'package:watermark_camera/services/api_client.dart';
 import 'package:watermark_camera/services/auth_service.dart';
 import 'package:watermark_camera/services/device_key_service.dart';
 import 'package:watermark_camera/services/file_api_service.dart';
+import 'package:watermark_camera/services/order_api_service.dart';
 import 'package:watermark_camera/services/space_api_service.dart';
 import 'package:watermark_camera/services/space_media_service.dart';
 import 'package:watermark_camera/services/user_api_service.dart';
@@ -25,8 +27,10 @@ void main() {
   Get.put(ApiClient(), permanent: true);
   Get.put(UserApiService(), permanent: true);
   Get.put(WeChatAuthService(), permanent: true);
+  Get.put(AlipayService(), permanent: true);
   Get.put(FileApiService(), permanent: true);
   Get.put(SpaceApiService(), permanent: true);
+  Get.put(OrderApiService(), permanent: true);
   Get.put(DeviceKeyService(), permanent: true);
   Get.put(SpaceMediaService(), permanent: true);
   Get.put(AuthService(), permanent: true);
@@ -43,7 +47,7 @@ class WatermarkCameraApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: '水印相机',
+      title: '梅花鹿',
       routerConfig: appRouter,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),

@@ -130,6 +130,21 @@ class _CameraUserMenuSheetState extends State<CameraUserMenuSheet> {
                 const Divider(height: 1),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
+                  leading: const Icon(
+                    Icons.workspace_premium_outlined,
+                    color: Color(0xFFFF8A3D),
+                  ),
+                  title: const Text('个人会员'),
+                  subtitle: const Text('开通会员解锁权益'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    context.push(AppPaths.personalMembership);
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.logout, color: Color(0xFFFF4D4F)),
                   title: const Text(
                     '退出登录',

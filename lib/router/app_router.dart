@@ -8,6 +8,7 @@ import 'package:watermark_camera/pages/auth/edit_profile_page.dart';
 import 'package:watermark_camera/pages/auth/forgot_password_page.dart';
 import 'package:watermark_camera/pages/auth/login_page.dart';
 import 'package:watermark_camera/pages/auth/wechat_bind_phone_page.dart';
+import 'package:watermark_camera/pages/auth/personal_membership_page.dart';
 import 'package:watermark_camera/pages/auth/user_profile_page.dart';
 import 'package:watermark_camera/pages/personal/personal_space_page.dart';
 import 'package:watermark_camera/pages/personal/personal_space_upload_controller.dart';
@@ -22,6 +23,7 @@ import 'package:watermark_camera/pages/team/team_department_management_page.dart
 import 'package:watermark_camera/pages/team/team_info_page.dart';
 import 'package:watermark_camera/pages/team/team_contact_invite_page.dart';
 import 'package:watermark_camera/pages/team/team_invite_members_page.dart';
+import 'package:watermark_camera/pages/team/team_membership_page.dart';
 import 'package:watermark_camera/pages/team/team_qr_invite_page.dart';
 import 'package:watermark_camera/pages/team/team_member_profile_page.dart';
 import 'package:watermark_camera/pages/team/team_photo_search_page.dart';
@@ -107,6 +109,29 @@ final GoRouter appRouter = GoRouter(
       name: 'editProfile',
       builder: (BuildContext context, GoRouterState state) =>
           const EditProfilePage(),
+    ),
+    GoRoute(
+      path: AppPaths.personalMembership,
+      name: 'personalMembership',
+      builder: (BuildContext context, GoRouterState state) =>
+          const PersonalMembershipPage(),
+    ),
+    GoRoute(
+      path: AppPaths.teamMembership,
+      name: 'teamMembership',
+      builder: (BuildContext context, GoRouterState state) {
+        final extra = state.extra;
+        if (extra is TeamMembershipArgs) {
+          return TeamMembershipPage(team: extra.team);
+        }
+        if (extra is Team) {
+          return TeamMembershipPage(team: extra);
+        }
+        return const PersonalMembershipPage(
+          planType: '1',
+          title: '开通团队会员',
+        );
+      },
     ),
     GoRoute(
       path: AppPaths.createTeam,

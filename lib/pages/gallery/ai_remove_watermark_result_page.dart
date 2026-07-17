@@ -74,7 +74,7 @@ class _AiRemoveWatermarkResultPageState extends State<AiRemoveWatermarkResultPag
       if (!mounted) return;
       setState(() {
         _isProcessing = false;
-        _errorMessage = '仅支持去除本应用「水印相机」相册中的水印';
+        _errorMessage = '仅支持去除本应用「梅花鹿」相册中的水印';
       });
       return;
     }

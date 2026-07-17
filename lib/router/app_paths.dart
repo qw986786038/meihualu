@@ -9,6 +9,8 @@ abstract final class AppPaths {
   static const wechatBindPhone = '/auth/wechat-bind-phone';
   static const userProfile = '/user/profile';
   static const editProfile = '/user/profile/edit';
+  static const personalMembership = '/user/membership';
+  static const teamMembership = '/team/membership';
   static const createTeam = '/team/create';
   static const joinTeam = '/team/join';
   static const joinTeamByCode = '/team/join/code';

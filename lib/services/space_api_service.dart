@@ -35,6 +35,7 @@ class SpaceApiService extends GetxService {
     required String watermarkContent,
     required String latitude,
     required String longitude,
+    String antiFakeCode = '',
     bool? proofMark,
   }) {
     final fields = <String, String>{
@@ -45,6 +46,7 @@ class SpaceApiService extends GetxService {
       'watermarkContent': watermarkContent,
       'latitude': latitude,
       'longitude': longitude,
+      'antiFakeCode': antiFakeCode,
     };
     if (proofMark != null) {
       fields['proofMark'] = proofMark ? 'true' : 'false';

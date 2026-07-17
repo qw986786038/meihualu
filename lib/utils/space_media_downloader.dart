@@ -17,7 +17,7 @@ class SpaceMediaDownloadItem {
 }
 
 abstract final class SpaceMediaDownloader {
-  static const _albumName = '水印相机';
+  static const _albumName = '梅花鹿';
 
   static Future<bool> downloadToGallery({
     required String ossUrl,

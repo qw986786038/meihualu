@@ -41,6 +41,7 @@ class SpaceBatchUploadItem {
     required this.exifData,
     required this.watermarkId,
     required this.watermarkContent,
+    this.antiFakeCode = '',
   });
 
   final String filePath;
@@ -48,4 +49,5 @@ class SpaceBatchUploadItem {
   final String exifData;
   final int watermarkId;
   final String watermarkContent;
+  final String antiFakeCode;
 }
