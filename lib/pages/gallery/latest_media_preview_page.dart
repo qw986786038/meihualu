@@ -5,14 +5,24 @@ import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
 import 'package:photo_manager/photo_manager.dart';
 
-/// 全屏预览相册中最近一张照片或视频。
+/// 全屏预览相册中最近一张照片或视频；也可直接预览本地文件。
 class LatestMediaPreviewPage extends StatelessWidget {
-  const LatestMediaPreviewPage({super.key, required this.asset});
+  const LatestMediaPreviewPage({
+    super.key,
+    this.asset,
+    this.filePath,
+    this.isVideo = false,
+  }) : assert(asset != null || filePath != null);
 
-  final AssetEntity asset;
+  final AssetEntity? asset;
+  final String? filePath;
+  final bool isVideo;
 
   @override
   Widget build(BuildContext context) {
+    final showVideo = asset != null
+        ? asset!.type == AssetType.video
+        : isVideo;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -21,23 +31,37 @@ class LatestMediaPreviewPage extends StatelessWidget {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Center(
-        child: asset.type == AssetType.video
-            ? _VideoPreview(asset: asset)
-            : _ImagePreview(asset: asset),
+        child: showVideo
+            ? (asset != null
+                ? _VideoPreview(asset: asset!)
+                : const Text(
+                    '视频请在系统相册中播放',
+                    style: TextStyle(color: Colors.white70),
+                  ))
+            : _ImagePreview(asset: asset, filePath: filePath),
       ),
     );
   }
 }
 
 class _ImagePreview extends StatelessWidget {
-  const _ImagePreview({required this.asset});
+  const _ImagePreview({this.asset, this.filePath});
 
-  final AssetEntity asset;
+  final AssetEntity? asset;
+  final String? filePath;
+
+  Future<File?> _resolveFile() async {
+    if (filePath != null) {
+      final file = File(filePath!);
+      return file.existsSync() ? file : null;
+    }
+    return asset?.file;
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<File?>(
-      future: asset.file,
+      future: _resolveFile(),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const CircularProgressIndicator(color: Colors.white);

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:watermark_camera/models/team.dart';
@@ -108,7 +108,7 @@ class _TeamInviteMembersPageState extends State<TeamInviteMembersPage> {
             child: Column(
               children: [
                 Text(
-                  '也可以让成员下载今日梅花鹿APP',
+                  '也可以让成员下载今日媒花录APP',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13,

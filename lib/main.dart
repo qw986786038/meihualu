@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:watermark_camera/router/app_router.dart';
 import 'package:watermark_camera/services/alipay_service.dart';
 import 'package:watermark_camera/services/aliyun_image_tagging_service.dart';
@@ -47,7 +47,7 @@ class WatermarkCameraApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: '梅花鹿',
+      title: '媒花录',
       routerConfig: appRouter,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),

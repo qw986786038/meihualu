@@ -11,8 +11,13 @@ class GallerySaver {
   const GallerySaver._();
 
   static Future<bool> ensureAccess({bool toAlbum = true}) async {
-    return await Gal.hasAccess(toAlbum: toAlbum) ||
-        await Gal.requestAccess(toAlbum: toAlbum);
+    try {
+      return await Gal.hasAccess(toAlbum: toAlbum) ||
+          await Gal.requestAccess(toAlbum: toAlbum);
+    } catch (e, st) {
+      debugPrint('GallerySaver.ensureAccess failed: $e\n$st');
+      return false;
+    }
   }
 
   static Future<bool> savePath(

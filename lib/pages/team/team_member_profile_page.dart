@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:getx_plus/getx_plus.dart';
 import 'package:go_router/go_router.dart';
@@ -332,23 +330,30 @@ class _MemberPhotoDateGroupTile extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: photos.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              mainAxisSpacing: 4,
-              crossAxisSpacing: 4,
-              childAspectRatio: 1,
-            ),
-            itemBuilder: (context, index) {
-              final photo = photos[index];
-              return _MemberPhotoThumbnail(
-                photo: photo,
-                allPhotos: photos,
-                photoIndex: index,
-                timeLabel: formatTime(photo.capturedAt),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              const crossAxisCount = 3;
+              const spacing = 4.0;
+              final cellSize =
+                  (constraints.maxWidth - spacing * (crossAxisCount - 1)) /
+                      crossAxisCount;
+
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: [
+                  for (var index = 0; index < photos.length; index++)
+                    SizedBox(
+                      width: cellSize,
+                      height: cellSize,
+                      child: _MemberPhotoThumbnail(
+                        photo: photos[index],
+                        allPhotos: photos,
+                        photoIndex: index,
+                        timeLabel: formatTime(photos[index].capturedAt),
+                      ),
+                    ),
+                ],
               );
             },
           ),
@@ -381,80 +386,39 @@ class _MemberPhotoThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final file = File(photo.filePath);
-    final hasImage = file.existsSync();
-    final hasRemote = photo.filePath.startsWith('http://') ||
-        photo.filePath.startsWith('https://') ||
-        (photo.ossUrl?.isNotEmpty ?? false);
+    final url = photo.filePath.isNotEmpty
+        ? photo.filePath
+        : (photo.ossUrl ?? '');
 
     return GestureDetector(
       onTap: () => _openViewer(context),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(4),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (hasImage)
-              Image.file(file, fit: BoxFit.cover)
-            else if (hasRemote)
-              Image.network(
-                photo.filePath.startsWith('http')
-                    ? photo.filePath
-                    : photo.ossUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => _placeholder(),
-              )
-            else
-              _placeholder(),
-            if (photo.isVideo)
-              Center(
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.play_arrow,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
+        child: SpaceMediaThumbnail(
+          url: url,
+          placeholderColor: Colors.grey.shade200,
+          isVideo: photo.isVideo,
+          proofMark: photo.proofMark,
+          videoIconSize: 28,
+          bottomOverlay: Positioned(
+            left: 4,
+            bottom: 4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(2),
               ),
-            if (photo.proofMark) const SpaceProofMarkBadge(),
-            Positioned(
-              left: 4,
-              bottom: 4,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.45),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-                child: Text(
-                  timeLabel,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                  ),
+              child: Text(
+                timeLabel,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
                 ),
               ),
             ),
-          ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _placeholder() {
-    return Container(
-      color: Colors.grey.shade200,
-      alignment: Alignment.center,
-      child: Icon(
-        photo.isVideo ? Icons.videocam_outlined : Icons.image_outlined,
-        color: Colors.grey.shade500,
-        size: 28,
       ),
     );
   }

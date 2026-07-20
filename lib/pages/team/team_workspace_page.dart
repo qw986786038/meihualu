@@ -1096,43 +1096,35 @@ class _PhotoGrid extends StatelessWidget {
         final cellSize =
             (constraints.maxWidth - spacing * (crossAxisCount - 1)) /
                 crossAxisCount;
-        final rowCount = (count / crossAxisCount).ceil();
-        final gridHeight = cellSize * rowCount + spacing * (rowCount - 1);
 
-        return SizedBox(
-          height: gridHeight,
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: count,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              mainAxisSpacing: spacing,
-              crossAxisSpacing: spacing,
-              childAspectRatio: 1,
-            ),
-            itemBuilder: (context, index) {
-              final photo = photos[index];
-              return GestureDetector(
-                onTap: () => openSpaceMediaViewer(
-                  context,
-                  items: SpaceMediaViewerItem.fromTeamPhotos(photos),
-                  initialIndex: index,
-                ),
-                onLongPress: () => _downloadPhoto(context, photo),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: SpaceMediaThumbnail(
-                    url: photo.filePath,
-                    placeholderColor: Colors.grey.shade200,
-                    isVideo: photo.isVideo,
-                    proofMark: photo.proofMark,
-                    videoIconSize: 22,
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            for (var index = 0; index < count; index++)
+              SizedBox(
+                width: cellSize,
+                height: cellSize,
+                child: GestureDetector(
+                  onTap: () => openSpaceMediaViewer(
+                    context,
+                    items: SpaceMediaViewerItem.fromTeamPhotos(photos),
+                    initialIndex: index,
+                  ),
+                  onLongPress: () => _downloadPhoto(context, photos[index]),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: SpaceMediaThumbnail(
+                      url: photos[index].filePath,
+                      placeholderColor: Colors.grey.shade200,
+                      isVideo: photos[index].isVideo,
+                      proofMark: photos[index].proofMark,
+                      videoIconSize: 22,
+                    ),
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+          ],
         );
       },
     );

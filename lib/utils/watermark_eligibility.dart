@@ -1,13 +1,13 @@
-import 'package:photo_manager/photo_manager.dart';
+﻿import 'package:photo_manager/photo_manager.dart';
 
 /// 本应用保存水印媒体的相册名称。
-const String kWatermarkCameraAlbumName = '梅花鹿';
+const String kWatermarkCameraAlbumName = '媒花录';
 
 /// 判断媒体是否支持 AI 去水印。
 class WatermarkEligibility {
   const WatermarkEligibility._();
 
-  /// 仅本应用「梅花鹿」相册中的媒体可编辑水印。
+  /// 仅本应用「媒花录」相册中的媒体可编辑水印。
   static bool isEditable({
     required AssetEntity asset,
     required Set<String> watermarkAlbumAssetIds,
@@ -18,7 +18,7 @@ class WatermarkEligibility {
     return watermarkAlbumAssetIds.contains(asset.id);
   }
 
-  /// 与 [isEditable] 相同：仅「梅花鹿」相册内媒体可去水印。
+  /// 与 [isEditable] 相同：仅「媒花录」相册内媒体可去水印。
   static bool isRemovable({
     required AssetEntity asset,
     required Set<String> watermarkAlbumAssetIds,

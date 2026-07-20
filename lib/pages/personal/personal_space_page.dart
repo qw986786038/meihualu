@@ -357,31 +357,23 @@ class _PhotoDaySection extends StatelessWidget {
               final cellSize =
                   (constraints.maxWidth - spacing * (crossAxisCount - 1)) /
                       crossAxisCount;
-              final rowCount = (photos.length / crossAxisCount).ceil();
-              final gridHeight =
-                  cellSize * rowCount + spacing * (rowCount > 1 ? rowCount - 1 : 0);
 
-              return SizedBox(
-                height: gridHeight,
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: photos.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    mainAxisSpacing: spacing,
-                    crossAxisSpacing: spacing,
-                    childAspectRatio: 1,
-                  ),
-                  itemBuilder: (context, index) {
-                    return _PersonalPhotoTile(
-                      photo: photos[index],
-                      allPhotos: photos,
-                      photoIndex: index,
-                      compact: true,
-                    );
-                  },
-                ),
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: [
+                  for (var index = 0; index < photos.length; index++)
+                    SizedBox(
+                      width: cellSize,
+                      height: cellSize,
+                      child: _PersonalPhotoTile(
+                        photo: photos[index],
+                        allPhotos: photos,
+                        photoIndex: index,
+                        compact: true,
+                      ),
+                    ),
+                ],
               );
             },
           ),
@@ -451,22 +443,24 @@ class _PersonalPhotoTile extends StatelessWidget {
       onTap: () => _openViewer(context),
       onLongPress: () => _download(context),
       child: ClipRRect(
-      borderRadius: BorderRadius.circular(6),
-      child: SpaceMediaThumbnail(
-        url: photo.filePath,
-        isVideo: photo.isVideo,
-        proofMark: photo.proofMark,
-        videoIconSize: compact ? 24 : 40,
-        bottomOverlay: !compact
-            ? Positioned(
-                left: 8,
-                right: 8,
-                bottom: 8,
-                child: _PhotoWatermarkOverlay(photo: photo),
-              )
-            : null,
+        borderRadius: BorderRadius.circular(6),
+        child: SizedBox.expand(
+          child: SpaceMediaThumbnail(
+            url: photo.filePath,
+            isVideo: photo.isVideo,
+            proofMark: photo.proofMark,
+            videoIconSize: compact ? 24 : 40,
+            bottomOverlay: !compact
+                ? Positioned(
+                    left: 8,
+                    right: 8,
+                    bottom: 8,
+                    child: _PhotoWatermarkOverlay(photo: photo),
+                  )
+                : null,
+          ),
+        ),
       ),
-    ),
     );
   }
 }

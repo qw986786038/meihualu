@@ -370,32 +370,41 @@ class _SearchResultGroup extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: group.files.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              mainAxisSpacing: 6,
-              crossAxisSpacing: 6,
-              childAspectRatio: 1,
-            ),
-            itemBuilder: (context, index) {
-              final file = group.files[index];
-              return GestureDetector(
-                onTap: () => openSpaceMediaViewer(
-                  context,
-                  items: SpaceMediaViewerItem.fromSpaceMediaFiles(group.files),
-                  initialIndex: index,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: SpaceMediaThumbnail(
-                    url: file.displayUrl,
-                    isVideo: file.isVideo,
-                    proofMark: file.proofMark,
-                  ),
-                ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const crossAxisCount = 3;
+              const spacing = 6.0;
+              final cellSize =
+                  (constraints.maxWidth - spacing * (crossAxisCount - 1)) /
+                      crossAxisCount;
+
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: [
+                  for (var index = 0; index < group.files.length; index++)
+                    SizedBox(
+                      width: cellSize,
+                      height: cellSize,
+                      child: GestureDetector(
+                        onTap: () => openSpaceMediaViewer(
+                          context,
+                          items: SpaceMediaViewerItem.fromSpaceMediaFiles(
+                            group.files,
+                          ),
+                          initialIndex: index,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: SpaceMediaThumbnail(
+                            url: group.files[index].displayUrl,
+                            isVideo: group.files[index].isVideo,
+                            proofMark: group.files[index].proofMark,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               );
             },
           ),

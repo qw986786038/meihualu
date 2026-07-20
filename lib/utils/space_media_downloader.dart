@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:watermark_camera/config/api_config.dart';
@@ -17,7 +17,7 @@ class SpaceMediaDownloadItem {
 }
 
 abstract final class SpaceMediaDownloader {
-  static const _albumName = '梅花鹿';
+  static const _albumName = '媒花录';
 
   static Future<bool> downloadToGallery({
     required String ossUrl,

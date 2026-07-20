@@ -21,26 +21,38 @@ class SpaceMediaImage extends StatelessWidget {
       return _placeholder();
     }
 
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return Image.network(
-        trimmed,
-        fit: fit,
-        errorBuilder: (context, error, stackTrace) => _placeholder(),
-      );
-    }
+    final image = trimmed.startsWith('http://') || trimmed.startsWith('https://')
+        ? Image.network(
+            trimmed,
+            fit: fit,
+            width: double.infinity,
+            height: double.infinity,
+            alignment: Alignment.center,
+            errorBuilder: (context, error, stackTrace) => _placeholder(),
+          )
+        : File(trimmed).existsSync()
+            ? Image.file(
+                File(trimmed),
+                fit: fit,
+                width: double.infinity,
+                height: double.infinity,
+                alignment: Alignment.center,
+              )
+            : _placeholder();
 
-    final file = File(trimmed);
-    if (file.existsSync()) {
-      return Image.file(file, fit: fit);
-    }
-    return _placeholder();
+    return SizedBox.expand(child: image);
   }
 
   Widget _placeholder() {
-    return Container(
+    return ColoredBox(
       color: placeholderColor,
-      alignment: Alignment.center,
-      child: Icon(Icons.photo_camera_outlined, color: Colors.grey.shade500, size: 36),
+      child: Center(
+        child: Icon(
+          Icons.photo_camera_outlined,
+          color: Colors.grey.shade500,
+          size: 36,
+        ),
+      ),
     );
   }
 }

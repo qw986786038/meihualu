@@ -95,9 +95,13 @@ class SpaceMediaFile {
 
   String get displayUrl {
     final thumb = thumbnailUrl?.trim();
-    if (thumb != null && thumb.isNotEmpty) return thumb;
+    if (thumb != null && thumb.isNotEmpty) {
+      return ApiConfig.resolveAssetUrl(thumb);
+    }
     final url = ossUrl?.trim();
-    if (url != null && url.isNotEmpty) return url;
+    if (url != null && url.isNotEmpty) {
+      return ApiConfig.resolveAssetUrl(url);
+    }
     return '';
   }
 

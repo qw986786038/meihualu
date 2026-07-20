@@ -59,9 +59,16 @@ class AMapLocationService extends GetxService {
         return;
       }
 
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+      LocationPermission permission;
+      try {
+        permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+      } catch (e, st) {
+        debugPrint('Geolocator permission request failed: $e\n$st');
+        watermarkAddress.value = _permissionDeniedText;
+        return;
       }
       if (permission == LocationPermission.denied) {
         watermarkAddress.value = _permissionDeniedText;
@@ -109,17 +116,27 @@ class AMapLocationService extends GetxService {
 
       latestLocation.value = location;
       var address = _formatBriefAddress(location!);
-      if (address == _locationFailedText) {
+      // SDK 有时只有经纬度（高德逆地理失败 / Geolocator 兜底），需走 Web 逆地理补地址。
+      if (_needsRegeocode(address, location)) {
         final regeocoded = await _fetchRegeocodeAddress(
           location.latitude!,
           location.longitude!,
         );
-        if (regeocoded != null) {
+        if (regeocoded != null && regeocoded.isNotEmpty) {
           address = regeocoded;
         }
       }
       watermarkAddress.value = address;
-      nearbyRecommendations.assignAll(_buildLocalRecommendations(location));
+      final recommendations = _buildLocalRecommendations(location)
+          .where((item) => !_isCoordinateText(item))
+          .toList();
+      if (recommendations.isEmpty &&
+          address.isNotEmpty &&
+          !_isCoordinateText(address) &&
+          address != _locationFailedText) {
+        recommendations.add(address);
+      }
+      nearbyRecommendations.assignAll(recommendations);
       unawaited(_fetchWeather(location.adCode));
       unawaited(_fetchNearbyRecommendations(location));
     } catch (e, st) {
@@ -201,6 +218,12 @@ class AMapLocationService extends GetxService {
     if (brief.isNotEmpty && nearby != null) return '$brief · $nearby';
     if (brief.isNotEmpty) return brief;
 
+    // SDK 有时未拆分省市区，但仍带回完整 address。
+    final fullAddress = location.address?.trim();
+    if (fullAddress != null && fullAddress.isNotEmpty) {
+      return fullAddress;
+    }
+
     final latitude = location.latitude;
     final longitude = location.longitude;
     if (latitude != null && longitude != null) {
@@ -208,6 +231,28 @@ class AMapLocationService extends GetxService {
     }
 
     return _locationFailedText;
+  }
+
+  /// 仅有坐标或缺少地址字段时，需要 Web 逆地理补全。
+  bool _needsRegeocode(String address, AMapLocation location) {
+    if (address == _locationFailedText) return true;
+    if (_isCoordinateText(address)) return true;
+
+    final hasAddressFields =
+        (location.city?.trim().isNotEmpty == true) ||
+        (location.district?.trim().isNotEmpty == true) ||
+        (location.province?.trim().isNotEmpty == true) ||
+        (location.address?.trim().isNotEmpty == true) ||
+        (location.poiName?.trim().isNotEmpty == true) ||
+        (location.aoiName?.trim().isNotEmpty == true) ||
+        (location.street?.trim().isNotEmpty == true);
+    return !hasAddressFields;
+  }
+
+  bool _isCoordinateText(String text) {
+    return RegExp(
+      r'^-?\d+(?:\.\d+)?,\s*-?\d+(?:\.\d+)?$',
+    ).hasMatch(text.trim());
   }
 
   bool _isValidLocation(AMapLocation? location) {
@@ -291,41 +336,54 @@ class AMapLocationService extends GetxService {
       final regeocode = body['regeocode'];
       if (regeocode is! Map) return null;
 
+      final component = regeocode['addressComponent'];
+      if (component is Map) {
+        final city = _amapText(component['city']);
+        final district = _amapText(component['district']);
+        final province = _amapText(component['province']);
+        final township = _amapText(component['township']);
+
+        String? streetText;
+        final streetNumber = component['streetNumber'];
+        if (streetNumber is Map) {
+          final street = _amapText(streetNumber['street']);
+          final number = _amapText(streetNumber['number']);
+          if (street != null) {
+            streetText = number == null ? street : '$street$number';
+          }
+        }
+
+        final areaParts = <String>[];
+        if (city != null) {
+          areaParts.add(city);
+        } else if (province != null) {
+          areaParts.add(province);
+        }
+        if (district != null && district != city) {
+          areaParts.add(district);
+        }
+        final area = areaParts.join();
+        final nearby = streetText ?? township;
+        if (area.isNotEmpty && nearby != null) return '$area · $nearby';
+        if (area.isNotEmpty) return area;
+        if (nearby != null) return nearby;
+      }
+
       final formatted = regeocode['formatted_address']?.toString().trim();
-      if (formatted != null && formatted.isNotEmpty) {
+      if (formatted != null && formatted.isNotEmpty && formatted != '[]') {
         return formatted;
       }
-
-      final component = regeocode['addressComponent'];
-      if (component is! Map) return null;
-
-      final parts = <String>[];
-      void addPart(String? value) {
-        final text = value?.trim();
-        if (text == null || text.isEmpty || text == '[]') return;
-        if (parts.contains(text)) return;
-        parts.add(text);
-      }
-
-      addPart(component['city']?.toString());
-      addPart(component['district']?.toString());
-      addPart(component['township']?.toString());
-
-      final streetNumber = component['streetNumber'];
-      if (streetNumber is Map) {
-        final street = streetNumber['street']?.toString();
-        final number = streetNumber['number']?.toString();
-        if (street != null && street.isNotEmpty) {
-          addPart(number == null || number.isEmpty ? street : '$street$number');
-        }
-      }
-
-      if (parts.isEmpty) return null;
-      return parts.join();
+      return null;
     } catch (e, st) {
       debugPrint('AMap regeocode failed: $e\n$st');
       return null;
     }
+  }
+
+  String? _amapText(Object? value) {
+    final text = value?.toString().trim();
+    if (text == null || text.isEmpty || text == '[]') return null;
+    return text;
   }
 
   List<String> _buildLocalRecommendations(AMapLocation location) {

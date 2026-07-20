@@ -1,4 +1,4 @@
-import 'dart:async' show Timer, unawaited;
+﻿import 'dart:async' show Completer, Timer, unawaited;
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
@@ -31,10 +31,29 @@ class CameraController extends GetxController {
   final screenshotController = ScreenshotController();
   final Rxn<ImageProvider> latestPhotoPreviewImage = Rxn<ImageProvider>();
   final AMapLocationService _locationService = Get.find<AMapLocationService>();
-  static const _albumName = '梅花鹿';
+  static const _albumName = '媒花录';
   Timer? _videoWatermarkTimer;
+  String? _lastLocalCapturePath;
+  bool _lastLocalCaptureIsVideo = false;
+  DateTime? _ignoreGalleryTapUntil;
+  final Completer<void> _startupPermissionsCompleter = Completer<void>();
 
-  Future<AssetEntity?> getLatestPhoto() async {
+  /// 相机 + 相册启动权限流程结束后完成，供定位等后续权限串行等待。
+  Future<void> get startupPermissionsReady => _startupPermissionsCompleter.future;
+
+  Future<AssetEntity?> getLatestPhoto({int retries = 0}) async {
+    for (var attempt = 0; attempt <= retries; attempt++) {
+      if (attempt > 0) {
+        await Future<void>.delayed(Duration(milliseconds: 250 * attempt));
+        await PhotoManager.clearFileCache();
+      }
+      final asset = await _fetchLatestPhotoOnce();
+      if (asset != null) return asset;
+    }
+    return null;
+  }
+
+  Future<AssetEntity?> _fetchLatestPhotoOnce() async {
     final permission = await PhotoManager.requestPermissionExtend();
     if (!permission.hasAccess) return null;
 
@@ -54,14 +73,46 @@ class CameraController extends GetxController {
     return assets.first;
   }
 
+  void _armGalleryTapGuard([Duration duration = const Duration(milliseconds: 900)]) {
+    _ignoreGalleryTapUntil = DateTime.now().add(duration);
+  }
+
+  bool get _shouldIgnoreGalleryTap =>
+      _ignoreGalleryTapUntil != null &&
+      DateTime.now().isBefore(_ignoreGalleryTapUntil!);
+
   @override
   Future<void> onInit() async {
     camera.onCaptured = (file, type) {
       unawaited(_handleCapture(file, type));
     };
-    await camera.initialize();
-    unawaited(refreshLatestPhotoPreview());
+    try {
+      await camera.initialize();
+      // 相册权限必须等相机权限弹窗结束后再申请。
+      // 鸿蒙高版本并发弹多个权限窗容易直接闪退。
+      _armGalleryTapGuard();
+      await _requestGalleryPermissionsSequentially();
+    } finally {
+      if (!_startupPermissionsCompleter.isCompleted) {
+        _startupPermissionsCompleter.complete();
+      }
+    }
     super.onInit();
+  }
+
+  /// 串行申请相册读写权限，并吞掉平台异常以免闪退。
+  Future<void> _requestGalleryPermissionsSequentially() async {
+    try {
+      await GallerySaver.ensureAccess(toAlbum: true);
+    } catch (e, st) {
+      debugPrint('Gallery access request failed: $e\n$st');
+    }
+    try {
+      await PhotoManager.requestPermissionExtend();
+    } catch (e, st) {
+      debugPrint('PhotoManager permission request failed: $e\n$st');
+    }
+    unawaited(refreshLatestPhotoPreview());
   }
 
   Future<void> startVideoRecording() async {
@@ -88,20 +139,47 @@ class CameraController extends GetxController {
   }
 
   Future<void> openLatestMedia(BuildContext context) async {
-    final asset = await getLatestPhoto();
-    if (asset == null) {
+    // 权限弹窗关闭后的穿透点击，常会误触左下角预览。
+    if (_shouldIgnoreGalleryTap) return;
+
+    final permission = await PhotoManager.requestPermissionExtend();
+    if (!permission.hasAccess) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('暂无照片或视频，或相册权限未授予')),
+        const SnackBar(content: Text('相册权限未授予，请在系统设置中开启')),
       );
       return;
     }
+
+    final asset = await getLatestPhoto(retries: 2);
+    if (asset != null) {
+      if (!context.mounted) return;
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          fullscreenDialog: true,
+          builder: (_) => LatestMediaPreviewPage(asset: asset),
+        ),
+      );
+      return;
+    }
+
+    final localPath = _lastLocalCapturePath;
+    if (localPath != null &&
+        !_lastLocalCaptureIsVideo &&
+        await File(localPath).exists()) {
+      if (!context.mounted) return;
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          fullscreenDialog: true,
+          builder: (_) => LatestMediaPreviewPage(filePath: localPath),
+        ),
+      );
+      return;
+    }
+
     if (!context.mounted) return;
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => LatestMediaPreviewPage(asset: asset),
-      ),
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('暂无照片或视频')),
     );
   }
 
@@ -121,23 +199,32 @@ class CameraController extends GetxController {
   }
 
   Future<void> refreshLatestPhotoPreview() async {
-    final latest = await getLatestPhoto();
-    if (latest == null) {
-      latestPhotoPreviewImage.value = null;
-      return;
-    }
-    var thumb = await latest.thumbnailDataWithSize(
-      const ThumbnailSize(200, 200),
-      quality: 85,
-    );
-    if (thumb == null && latest.type == AssetType.video) {
-      await Future<void>.delayed(const Duration(milliseconds: 500));
-      thumb = await latest.thumbnailDataWithSize(
+    final latest = await getLatestPhoto(retries: 2);
+    if (latest != null) {
+      var thumb = await latest.thumbnailDataWithSize(
         const ThumbnailSize(200, 200),
         quality: 85,
       );
+      if (thumb == null && latest.type == AssetType.video) {
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        thumb = await latest.thumbnailDataWithSize(
+          const ThumbnailSize(200, 200),
+          quality: 85,
+        );
+      }
+      if (thumb != null) {
+        latestPhotoPreviewImage.value = MemoryImage(thumb);
+        return;
+      }
     }
-    latestPhotoPreviewImage.value = thumb == null ? null : MemoryImage(thumb);
+
+    final localPath = _lastLocalCapturePath;
+    if (localPath != null &&
+        !_lastLocalCaptureIsVideo &&
+        await File(localPath).exists()) {
+      latestPhotoPreviewImage.value = FileImage(File(localPath));
+      return;
+    }
   }
 
   Future<void> _handleCapture(XFile file, CameraxCaptureType type) async {
@@ -165,6 +252,12 @@ class CameraController extends GetxController {
       );
     }
 
+    _lastLocalCapturePath = output.path;
+    _lastLocalCaptureIsVideo = type == CameraxCaptureType.video;
+    if (!_lastLocalCaptureIsVideo) {
+      latestPhotoPreviewImage.value = FileImage(File(output.path));
+    }
+
     PhotoSyncResult? syncResult;
     if (Get.isRegistered<AuthService>()) {
       final auth = Get.find<AuthService>();
@@ -183,6 +276,8 @@ class CameraController extends GetxController {
         (syncResult?.anySuccess ?? false);
 
     if (!skipLocalSave) {
+      // 保存时若弹出权限框，关闭后可能误触左下角预览。
+      _armGalleryTapGuard();
       await _saveToGallery(output, type);
     }
     await refreshLatestPhotoPreview();
@@ -274,8 +369,8 @@ class CameraController extends GetxController {
     }
   }
 
-  Future<void> _saveToGallery(XFile file, CameraxCaptureType type) async {
-    await GallerySaver.savePath(
+  Future<bool> _saveToGallery(XFile file, CameraxCaptureType type) async {
+    return GallerySaver.savePath(
       file.path,
       isVideo: type == CameraxCaptureType.video,
       album: _albumName,

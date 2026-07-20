@@ -167,7 +167,22 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    unawaited(locationService.warmupLocation());
+    // 等相机/相册权限串行完成后再定位，避免鸿蒙高版本并发弹窗闪退。
+    unawaited(_warmupLocationAfterStartupPermissions());
+  }
+
+  Future<void> _warmupLocationAfterStartupPermissions() async {
+    try {
+      await cameraController.startupPermissionsReady;
+    } catch (e, st) {
+      debugPrint('Wait startup permissions failed: $e\n$st');
+    }
+    if (!mounted) return;
+    try {
+      await locationService.warmupLocation();
+    } catch (e, st) {
+      debugPrint('Location warmup failed: $e\n$st');
+    }
   }
 
   @override

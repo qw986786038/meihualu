@@ -1,4 +1,4 @@
-import 'dart:async' show unawaited;
+﻿import 'dart:async' show unawaited;
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -66,7 +66,7 @@ class _BatchRemoveWatermarkPreviewPageState
       if (!mounted) return;
       setState(() {
         _isProcessing = false;
-        _errorMessage = '仅支持去除本应用「梅花鹿」相册中的水印';
+        _errorMessage = '仅支持去除本应用「媒花录」相册中的水印';
       });
       return;
     }
