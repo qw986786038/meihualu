@@ -84,6 +84,19 @@ jobs:
               echo 'DEVELOPMENT_TEAM=-'
             } >> "$cfg"
           done
+          # Ensure Xcode project has a non-empty DEVELOPMENT_TEAM placeholder.
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path("ios/Runner.xcodeproj/project.pbxproj")
+          text = path.read_text(encoding="utf-8")
+          if "DEVELOPMENT_TEAM" not in text:
+              text = text.replace(
+                  "PRODUCT_BUNDLE_IDENTIFIER = com.palsmon.mediarecord.app;",
+                  "DEVELOPMENT_TEAM = \"-\";\n\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.palsmon.mediarecord.app;",
+              )
+          path.write_text(text, encoding="utf-8")
+          print("patched project.pbxproj DEVELOPMENT_TEAM")
+          PY
 
       - name: Build unsigned iOS app
         run: |
@@ -98,12 +111,9 @@ jobs:
             EXTRA_ARGS+=(--build-number="${{ github.run_number }}")
           fi
 
-          flutter build ios --release --no-codesign "${EXTRA_ARGS[@]}" -- \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY=- \
-            EXPANDED_CODE_SIGN_IDENTITY=- \
-            DEVELOPMENT_TEAM=-
+          # Do not pass CODE_SIGN_* after "--": flutter treats them as target files.
+          # Signing is disabled via xcconfig in the previous step.
+          flutter build ios --release --no-codesign "${EXTRA_ARGS[@]}"
 
       - name: Package unsigned IPA
         run: |
