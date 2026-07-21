@@ -1,6 +1,8 @@
 package cn.hwato.camerax
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -12,6 +14,7 @@ class CameraxPlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var channel: MethodChannel
     private lateinit var appContext: Context
     private val executor = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var liveRecorder: LiveWatermarkVideoRecorder? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
@@ -45,7 +48,7 @@ class CameraxPlugin : FlutterPlugin, MethodCallHandler {
                     } catch (e: Exception) {
                         false
                     }
-                    result.success(ok)
+                    replySuccess(result, ok)
                 }
             }
             "mergeCaptureWithOverlay" -> {
@@ -73,7 +76,7 @@ class CameraxPlugin : FlutterPlugin, MethodCallHandler {
                     } catch (e: Exception) {
                         false
                     }
-                    result.success(ok)
+                    replySuccess(result, ok)
                 }
             }
             "startLiveWatermarkVideoRecording" -> {
@@ -101,7 +104,7 @@ class CameraxPlugin : FlutterPlugin, MethodCallHandler {
                     if (!ok) {
                         liveRecorder = null
                     }
-                    result.success(ok)
+                    replySuccess(result, ok)
                 }
             }
             "updateLiveWatermarkOverlay" -> {
@@ -113,7 +116,7 @@ class CameraxPlugin : FlutterPlugin, MethodCallHandler {
                 val overlayBytes = args["overlayBytes"] as? ByteArray
                 executor.execute {
                     liveRecorder?.updateOverlay(overlayBytes)
-                    result.success(true)
+                    replySuccess(result, true)
                 }
             }
             "pushLiveWatermarkVideoFrame" -> {
@@ -139,7 +142,7 @@ class CameraxPlugin : FlutterPlugin, MethodCallHandler {
                         rotation,
                         captureTimeUs,
                     ) == true
-                    result.success(ok)
+                    replySuccess(result, ok)
                 }
             }
             "stopLiveWatermarkVideoRecording" -> {
@@ -149,7 +152,7 @@ class CameraxPlugin : FlutterPlugin, MethodCallHandler {
                 executor.execute {
                     val ok = liveRecorder?.stop(recordingEndUs) == true
                     liveRecorder = null
-                    result.success(ok)
+                    replySuccess(result, ok)
                 }
             }
             "mergeVideoWithOverlay" -> {
@@ -196,7 +199,7 @@ class CameraxPlugin : FlutterPlugin, MethodCallHandler {
                     } catch (e: Exception) {
                         false
                     }
-                    result.success(ok)
+                    replySuccess(result, ok)
                 }
             }
 
@@ -218,7 +221,7 @@ class CameraxPlugin : FlutterPlugin, MethodCallHandler {
                     } catch (e: Exception) {
                         false
                     }
-                    result.success(ok)
+                    replySuccess(result, ok)
                 }
             }
 
@@ -231,6 +234,11 @@ class CameraxPlugin : FlutterPlugin, MethodCallHandler {
         liveRecorder = null
         channel.setMethodCallHandler(null)
         executor.shutdown()
+    }
+
+    /** MethodChannel Result 必须在主线程回复，后台线程直接 success 在鸿蒙上易闪退。 */
+    private fun replySuccess(result: Result, value: Any?) {
+        mainHandler.post { result.success(value) }
     }
 
     private fun parseOverlayKeyframes(raw: Any?): List<Pair<Long, String>> {

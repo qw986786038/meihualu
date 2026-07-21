@@ -12,8 +12,9 @@ class GallerySaver {
 
   static Future<bool> ensureAccess({bool toAlbum = true}) async {
     try {
-      return await Gal.hasAccess(toAlbum: toAlbum) ||
-          await Gal.requestAccess(toAlbum: toAlbum);
+      // 已有权限则不再弹窗；鸿蒙上快门后再弹权限窗易闪退。
+      if (await Gal.hasAccess(toAlbum: toAlbum)) return true;
+      return await Gal.requestAccess(toAlbum: toAlbum);
     } catch (e, st) {
       debugPrint('GallerySaver.ensureAccess failed: $e\n$st');
       return false;
@@ -67,7 +68,12 @@ class GallerySaver {
         await Gal.putImage(saveTarget, album: album);
       }
       return true;
-    } on GalException {
+    } on GalException catch (e, st) {
+      debugPrint('GallerySaver.savePath GalException: $e\n$st');
+      return false;
+    } catch (e, st) {
+      // 鸿蒙等 OEM 可能抛出非 GalException 的平台异常。
+      debugPrint('GallerySaver.savePath failed: $e\n$st');
       return false;
     } finally {
       if (preparedTemp) {

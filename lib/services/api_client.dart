@@ -259,6 +259,110 @@ class ApiClient extends GetxService {
     }
   }
 
+  Future<ApiResponse<T>> get<T>(
+    String path, {
+    T Function(Map<String, dynamic> json)? dataFromJson,
+    T Function(List<dynamic> list)? dataFromListJson,
+    Map<String, String>? headers,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}$path');
+    const requestBody = <String, dynamic>{};
+
+    try {
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'clientid': ApiConfig.clientId,
+          ...?headers,
+        },
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        _logFailure(
+          method: 'GET',
+          uri: uri,
+          requestBody: requestBody,
+          statusCode: response.statusCode,
+          responseBody: response.body,
+          reason: 'HTTP 状态码异常',
+        );
+        throw FormatException('HTTP ${response.statusCode}');
+      }
+
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(response.body);
+      } catch (error, stackTrace) {
+        _logFailure(
+          method: 'GET',
+          uri: uri,
+          requestBody: requestBody,
+          statusCode: response.statusCode,
+          responseBody: response.body,
+          reason: 'JSON 解析失败',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        throw FormatException('接口响应格式错误');
+      }
+
+      if (decoded is! Map<String, dynamic>) {
+        _logFailure(
+          method: 'GET',
+          uri: uri,
+          requestBody: requestBody,
+          statusCode: response.statusCode,
+          responseBody: response.body,
+          reason: '响应格式错误',
+        );
+        throw FormatException('接口响应格式错误');
+      }
+
+      final result = ApiResponse.fromJson(
+        decoded,
+        dataFromJson,
+        fromListJson: dataFromListJson,
+      );
+      if (!result.isSuccess) {
+        _logFailure(
+          method: 'GET',
+          uri: uri,
+          requestBody: requestBody,
+          statusCode: response.statusCode,
+          responseBody: response.body,
+          businessCode: result.code,
+          businessMsg: result.msg,
+          reason: '业务失败',
+        );
+      } else {
+        _logResponse(
+          method: 'GET',
+          uri: uri,
+          requestBody: requestBody,
+          statusCode: response.statusCode,
+          responseBody: response.body,
+          businessCode: result.code,
+          businessMsg: result.msg,
+        );
+      }
+
+      return result;
+    } catch (error, stackTrace) {
+      if (error is! FormatException) {
+        _logFailure(
+          method: 'GET',
+          uri: uri,
+          requestBody: requestBody,
+          reason: error.toString(),
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+      rethrow;
+    }
+  }
+
   Future<ApiResponse<T>> uploadAuthMultipart<T>(
     String path, {
     required String accessToken,

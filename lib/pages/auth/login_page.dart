@@ -338,6 +338,39 @@ class _LoginPageState extends State<LoginPage> {
             icon: const Icon(Icons.wechat, color: Color(0xFF07C160)),
             label: const Text('微信授权登录'),
           ),
+          const SizedBox(height: 24),
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                '登录即表示同意',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+              TextButton(
+                onPressed: () => context.push(AppPaths.serviceAgreement),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('《服务协议》', style: TextStyle(fontSize: 12)),
+              ),
+              Text(
+                '和',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+              TextButton(
+                onPressed: () => context.push(AppPaths.privacyPolicy),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('《隐私政策》', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
         ],
 
       ),

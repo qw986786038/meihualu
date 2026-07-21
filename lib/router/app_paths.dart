@@ -45,4 +45,6 @@ abstract final class AppPaths {
   static const batchRemoveWatermarkPreview =
       '/gallery/batch-remove-watermark/preview';
   static const mediaVerify = '/gallery/media-verify';
+  static const serviceAgreement = '/legal/service';
+  static const privacyPolicy = '/legal/privacy';
 }

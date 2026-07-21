@@ -1,5 +1,9 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:watermark_camera/debug/app_vconsole.dart';
 import 'package:watermark_camera/router/app_router.dart';
+import 'package:watermark_camera/services/agreement_api_service.dart';
 import 'package:watermark_camera/services/alipay_service.dart';
 import 'package:watermark_camera/services/aliyun_image_tagging_service.dart';
 import 'package:watermark_camera/services/aliyun_ocr_service.dart';
@@ -20,12 +24,14 @@ import 'package:getx_plus/getx_plus.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  AppVConsole.install();
 
   Get.put(AMapLocationService(), permanent: true);
   Get.put(AliyunImageTaggingService(), permanent: true);
   Get.put(AliyunOcrService(), permanent: true);
   Get.put(ApiClient(), permanent: true);
   Get.put(UserApiService(), permanent: true);
+  Get.put(AgreementApiService(), permanent: true);
   Get.put(WeChatAuthService(), permanent: true);
   Get.put(AlipayService(), permanent: true);
   Get.put(FileApiService(), permanent: true);
@@ -38,7 +44,14 @@ void main() {
   Get.put(TeamWorkspaceService(), permanent: true);
   Get.put(PersonalSpaceService(), permanent: true);
 
-  runApp(const WatermarkCameraApp());
+  runZonedGuarded(
+    () => runApp(const WatermarkCameraApp()),
+    (error, stack) {
+      AppVConsole.add('ERROR: $error');
+      AppVConsole.add('$stack');
+    },
+    zoneSpecification: AppVConsole.zoneSpecification,
+  );
 }
 
 class WatermarkCameraApp extends StatelessWidget {
@@ -53,6 +66,9 @@ class WatermarkCameraApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
+      builder: (context, child) {
+        return AppVConsoleScope(child: child ?? const SizedBox.shrink());
+      },
     );
   }
 }

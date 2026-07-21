@@ -43,8 +43,10 @@ import 'package:watermark_camera/pages/gallery/media_verify_picker_page.dart';
 import 'package:watermark_camera/pages/camera/image_tagging_picker_page.dart';
 import 'package:watermark_camera/pages/camera/screen_text_ocr_picker_page.dart';
 import 'package:watermark_camera/pages/settings/sync_settings_page.dart';
+import 'package:watermark_camera/models/api/agreement_data.dart';
 import 'package:watermark_camera/pages/gallery/edit_watermark_picker_page.dart';
 import 'package:watermark_camera/pages/gallery/media_multi_select_page.dart';
+import 'package:watermark_camera/pages/legal/agreement_page.dart';
 
 import 'app_paths.dart';
 
@@ -83,6 +85,18 @@ final GoRouter appRouter = GoRouter(
       name: 'login',
       builder: (BuildContext context, GoRouterState state) =>
           const LoginPage(),
+    ),
+    GoRoute(
+      path: AppPaths.serviceAgreement,
+      name: 'serviceAgreement',
+      builder: (BuildContext context, GoRouterState state) =>
+          const AgreementPage(type: AgreementType.service),
+    ),
+    GoRoute(
+      path: AppPaths.privacyPolicy,
+      name: 'privacyPolicy',
+      builder: (BuildContext context, GoRouterState state) =>
+          const AgreementPage(type: AgreementType.privacy),
     ),
     GoRoute(
       path: AppPaths.forgotPassword,

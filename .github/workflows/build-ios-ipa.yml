@@ -1,0 +1,88 @@
+name: Build iOS IPA (unsigned)
+
+# 无签名构建：不需要证书 / 描述文件 Secrets。
+# 产物不能直接上架或装真机，仅供归档、二次签名或内部分发流水线使用。
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_name:
+        description: '版本号 build-name（留空用 pubspec）'
+        required: false
+        default: ''
+      build_number:
+        description: '构建号 build-number（留空用 run_number）'
+        required: false
+        default: ''
+
+jobs:
+  build-ipa-unsigned:
+    name: Flutter iOS unsigned IPA
+    runs-on: macos-14
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.1'
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Install CocoaPods dependencies
+        run: |
+          gem install cocoapods
+          cd ios
+          pod install --repo-update
+
+      - name: Build unsigned iOS app
+        run: |
+          set -euo pipefail
+          EXTRA_ARGS=()
+          if [ -n "${{ inputs.build_name }}" ]; then
+            EXTRA_ARGS+=(--build-name="${{ inputs.build_name }}")
+          fi
+          if [ -n "${{ inputs.build_number }}" ]; then
+            EXTRA_ARGS+=(--build-number="${{ inputs.build_number }}")
+          else
+            EXTRA_ARGS+=(--build-number="${{ github.run_number }}")
+          fi
+
+          flutter build ios --release --no-codesign "${EXTRA_ARGS[@]}"
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="build/ios/iphoneos/Runner.app"
+          if [ ! -d "${APP_PATH}" ]; then
+            echo "未找到 ${APP_PATH}"
+            find build/ios -maxdepth 3 -type d -name "*.app" || true
+            exit 1
+          fi
+
+          OUT_DIR="build/ios/ipa"
+          mkdir -p "${OUT_DIR}/Payload"
+          rm -rf "${OUT_DIR}/Payload/"*
+          cp -R "${APP_PATH}" "${OUT_DIR}/Payload/Runner.app"
+
+          IPA_NAME="watermark_camera-unsigned-${{ github.run_number }}.ipa"
+          (
+            cd "${OUT_DIR}"
+            zip -r -y "${IPA_NAME}" Payload
+          )
+          ls -lh "${OUT_DIR}/${IPA_NAME}"
+          echo "IPA_PATH=${OUT_DIR}/${IPA_NAME}" >> "$GITHUB_ENV"
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: watermark-camera-ipa-unsigned
+          path: build/ios/ipa/*.ipa
+          if-no-files-found: error
+          retention-days: 14

@@ -199,57 +199,72 @@ class CameraController extends GetxController {
   }
 
   Future<void> refreshLatestPhotoPreview() async {
-    final latest = await getLatestPhoto(retries: 2);
-    if (latest != null) {
-      var thumb = await latest.thumbnailDataWithSize(
-        const ThumbnailSize(200, 200),
-        quality: 85,
-      );
-      if (thumb == null && latest.type == AssetType.video) {
-        await Future<void>.delayed(const Duration(milliseconds: 500));
-        thumb = await latest.thumbnailDataWithSize(
+    try {
+      final latest = await getLatestPhoto(retries: 2);
+      if (latest != null) {
+        var thumb = await latest.thumbnailDataWithSize(
           const ThumbnailSize(200, 200),
           quality: 85,
         );
+        if (thumb == null && latest.type == AssetType.video) {
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+          thumb = await latest.thumbnailDataWithSize(
+            const ThumbnailSize(200, 200),
+            quality: 85,
+          );
+        }
+        if (thumb != null) {
+          latestPhotoPreviewImage.value = MemoryImage(thumb);
+          return;
+        }
       }
-      if (thumb != null) {
-        latestPhotoPreviewImage.value = MemoryImage(thumb);
+
+      final localPath = _lastLocalCapturePath;
+      if (localPath != null &&
+          !_lastLocalCaptureIsVideo &&
+          await File(localPath).exists()) {
+        latestPhotoPreviewImage.value = FileImage(File(localPath));
         return;
       }
-    }
-
-    final localPath = _lastLocalCapturePath;
-    if (localPath != null &&
-        !_lastLocalCaptureIsVideo &&
-        await File(localPath).exists()) {
-      latestPhotoPreviewImage.value = FileImage(File(localPath));
-      return;
+    } catch (e, st) {
+      debugPrint('capture[preview] refresh failed: $e\n$st');
     }
   }
 
   Future<void> _handleCapture(XFile file, CameraxCaptureType type) async {
+    debugPrint('capture[start] type=$type path=${file.path}');
     XFile output = file;
     AntiFakeProof? proof;
     if (type == CameraxCaptureType.photo) {
-      final originalId = await WatermarkOriginalStore.saveFromPath(file.path);
-      final merged = await _mergePhotoWithWatermark(file);
-      output = merged ?? file;
-      if (Get.isRegistered<DeviceKeyService>()) {
-        final imageHash =
-            await SpaceUploadHelper.hashFileContent(output.path);
-        proof = await AntiFakeOverlay.applyToImagePath(
-          imagePath: output.path,
-          imageHash: imageHash,
-          deviceKeyService: Get.find<DeviceKeyService>(),
-          locationService: _locationService,
+      try {
+        final originalId = await WatermarkOriginalStore.saveFromPath(file.path);
+        debugPrint('capture[original] id=$originalId');
+        final merged = await _mergePhotoWithWatermark(file);
+        output = merged ?? file;
+        debugPrint('capture[merge] ok=${merged != null} path=${output.path}');
+        if (Get.isRegistered<DeviceKeyService>()) {
+          final imageHash =
+              await SpaceUploadHelper.hashFileContent(output.path);
+          proof = await AntiFakeOverlay.applyToImagePath(
+            imagePath: output.path,
+            imageHash: imageHash,
+            deviceKeyService: Get.find<DeviceKeyService>(),
+            locationService: _locationService,
+          );
+          debugPrint('capture[antifake] ok=${proof != null}');
+        }
+        await _writeLocationExif(output.path);
+        debugPrint('capture[exif] done');
+        await _writeWatermarkMeta(
+          output.path,
+          originalId: originalId,
+          proof: proof,
         );
+        debugPrint('capture[meta] done');
+      } catch (e, st) {
+        debugPrint('capture[photo-post] failed: $e\n$st');
+        output = file;
       }
-      await _writeLocationExif(output.path);
-      await _writeWatermarkMeta(
-        output.path,
-        originalId: originalId,
-        proof: proof,
-      );
     }
 
     _lastLocalCapturePath = output.path;
@@ -262,12 +277,17 @@ class CameraController extends GetxController {
     if (Get.isRegistered<AuthService>()) {
       final auth = Get.find<AuthService>();
       if (auth.isLoggedIn.value && Get.isRegistered<PhotoSyncService>()) {
-        syncResult = await Get.find<PhotoSyncService>().syncCapture(
-          output.path,
-          isVideo: type == CameraxCaptureType.video,
-          location: _locationService.watermarkAddress.value,
-          captureTime: DateTime.now(),
-        );
+        try {
+          syncResult = await Get.find<PhotoSyncService>().syncCapture(
+            output.path,
+            isVideo: type == CameraxCaptureType.video,
+            location: _locationService.watermarkAddress.value,
+            captureTime: DateTime.now(),
+          );
+          debugPrint('capture[sync] anySuccess=${syncResult.anySuccess}');
+        } catch (e, st) {
+          debugPrint('capture[sync] failed: $e\n$st');
+        }
       }
     }
 
@@ -278,9 +298,15 @@ class CameraController extends GetxController {
     if (!skipLocalSave) {
       // 保存时若弹出权限框，关闭后可能误触左下角预览。
       _armGalleryTapGuard();
-      await _saveToGallery(output, type);
+      try {
+        final saved = await _saveToGallery(output, type);
+        debugPrint('capture[gal] saved=$saved');
+      } catch (e, st) {
+        debugPrint('capture[gal] failed: $e\n$st');
+      }
     }
     await refreshLatestPhotoPreview();
+    debugPrint('capture[done] path=${output.path}');
   }
 
   Future<Uint8List?> _captureWatermarkBytes({bool forVideo = false}) async {
