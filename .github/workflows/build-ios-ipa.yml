@@ -69,6 +69,22 @@ jobs:
           cd ios
           pod install --repo-update
 
+      - name: Disable code signing for CI
+        run: |
+          set -euo pipefail
+          # Flutter 3.44 在打真机包时仍会检查 Development Team；CI 无证书时强制关闭签名。
+          for cfg in ios/Flutter/Debug.xcconfig ios/Flutter/Release.xcconfig; do
+            {
+              echo ''
+              echo '// CI unsigned build'
+              echo 'CODE_SIGNING_ALLOWED=NO'
+              echo 'CODE_SIGNING_REQUIRED=NO'
+              echo 'CODE_SIGN_IDENTITY=-'
+              echo 'EXPANDED_CODE_SIGN_IDENTITY=-'
+              echo 'DEVELOPMENT_TEAM=-'
+            } >> "$cfg"
+          done
+
       - name: Build unsigned iOS app
         run: |
           set -euo pipefail
@@ -82,7 +98,12 @@ jobs:
             EXTRA_ARGS+=(--build-number="${{ github.run_number }}")
           fi
 
-          flutter build ios --release --no-codesign "${EXTRA_ARGS[@]}"
+          flutter build ios --release --no-codesign "${EXTRA_ARGS[@]}" -- \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=- \
+            EXPANDED_CODE_SIGN_IDENTITY=- \
+            DEVELOPMENT_TEAM=-
 
       - name: Package unsigned IPA
         run: |
