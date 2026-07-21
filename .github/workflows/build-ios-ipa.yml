@@ -19,16 +19,39 @@ on:
       - camaera1.0.1
     paths:
       - '.github/workflows/build-ios-ipa.yml'
+      - 'camerax/ios/**'
+      - 'pubspec.lock'
 
 jobs:
   build-ipa-unsigned:
     name: Flutter iOS unsigned IPA
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 90
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          set -euo pipefail
+          ls /Applications | grep -i Xcode || true
+          # Prefer Xcode 16.x which matches camera_avfoundation Swift APIs.
+          for app in \
+            /Applications/Xcode_16.4.app \
+            /Applications/Xcode_16.3.app \
+            /Applications/Xcode_16.2.app \
+            /Applications/Xcode_16.1.app \
+            /Applications/Xcode_16.0.app \
+            /Applications/Xcode.app
+          do
+            if [ -d "$app" ]; then
+              sudo xcode-select -s "$app"
+              break
+            fi
+          done
+          xcodebuild -version
+          xcrun --show-sdk-version --sdk iphoneos || true
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
