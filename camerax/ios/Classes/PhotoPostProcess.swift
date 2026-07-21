@@ -14,7 +14,7 @@ func cameraxProcessCaptureImage(
   inputPath: String,
   outputPath: String,
   aspectRatio: Double,
-  quality: Double,
+  quality: Double
 ) throws {
   guard aspectRatio > 0, aspectRatio.isFinite else {
     throw CameraxPhotoError.loadFailed
