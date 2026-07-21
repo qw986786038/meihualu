@@ -1,20 +1,24 @@
-# GitHub Actions / Gitea Actions 打 IPA（无签名）
+# GitHub Actions — Build iOS IPA unsigned
 
-## 触发
+## Enable Actions first
 
-Actions → **Build iOS IPA (unsigned)** → Run workflow
+Repo → **Settings** → **Actions** → **General** → Allow actions → Save
 
-不需要证书、描述文件等 Secrets。
+Or open **Actions** tab and click **I understand my workflows, go ahead and enable them**.
 
-## 产物
+## Trigger
 
-Artifacts：`watermark-camera-ipa-unsigned`  
-文件名类似：`watermark_camera-unsigned-<run_number>.ipa`
+- Manual: Actions → **Build iOS IPA unsigned** → Run workflow
+- Also runs when this workflow file is pushed to `camaera1.0.1`
 
-## 说明
+No signing secrets required.
 
-- 使用 `flutter build ios --release --no-codesign`，再打成 Payload 结构的 IPA
-- **不能**直接安装到未越狱真机，也**不能**直接上架 App Store
-- 适合二次签名、归档或交给有证书的环境再签
+## Artifact
 
-若需要带签名的正式 IPA，需另配证书 Secrets 的签名 workflow。
+`watermark-camera-ipa-unsigned`  
+e.g. `watermark_camera-unsigned-<run_number>.ipa`
+
+## Notes
+
+- Built with `flutter build ios --release --no-codesign`, then zipped as Payload IPA
+- Cannot install on normal devices or upload to App Store without re-signing

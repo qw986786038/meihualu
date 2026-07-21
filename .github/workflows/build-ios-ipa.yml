@@ -1,19 +1,24 @@
-name: Build iOS IPA (unsigned)
+name: Build iOS IPA unsigned
 
-# 无签名构建：不需要证书 / 描述文件 Secrets。
-# 产物不能直接上架或装真机，仅供归档、二次签名或内部分发流水线使用。
+# Unsigned iOS build. No signing secrets required.
+# Output cannot be installed on device or uploaded to App Store as-is.
 
 on:
   workflow_dispatch:
     inputs:
       build_name:
-        description: '版本号 build-name（留空用 pubspec）'
+        description: 'build-name (empty = pubspec)'
         required: false
-        default: ''
+        type: string
       build_number:
-        description: '构建号 build-number（留空用 run_number）'
+        description: 'build-number (empty = run_number)'
         required: false
-        default: ''
+        type: string
+  push:
+    branches:
+      - camaera1.0.1
+    paths:
+      - '.github/workflows/build-ios-ipa.yml'
 
 jobs:
   build-ipa-unsigned:
@@ -61,7 +66,7 @@ jobs:
           set -euo pipefail
           APP_PATH="build/ios/iphoneos/Runner.app"
           if [ ! -d "${APP_PATH}" ]; then
-            echo "未找到 ${APP_PATH}"
+            echo "Runner.app not found at ${APP_PATH}"
             find build/ios -maxdepth 3 -type d -name "*.app" || true
             exit 1
           fi
@@ -77,7 +82,6 @@ jobs:
             zip -r -y "${IPA_NAME}" Payload
           )
           ls -lh "${OUT_DIR}/${IPA_NAME}"
-          echo "IPA_PATH=${OUT_DIR}/${IPA_NAME}" >> "$GITHUB_ENV"
 
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
